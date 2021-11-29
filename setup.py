@@ -1,10 +1,11 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(
     name='ai2thor-rearrangement',
     description="Fork of repo. Enables simple use of ai2thor environment for meta-rl agents",
     author="allenai",
-    packages=["baseline_configs", "datagen", "rearrange"],
+    packages=find_packages(),
+    exclude=["data", "pretrained_model_ckpts"],
     install_requires=[
         "ai2thor>=2.7.2,!=2.8.0",
         "allenact>=0.4.0",
