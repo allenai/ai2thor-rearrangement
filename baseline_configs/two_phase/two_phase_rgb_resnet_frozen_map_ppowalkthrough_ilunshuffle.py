@@ -3,8 +3,6 @@ from typing import Type, Optional
 
 import gym
 import torch
-from torch import nn
-
 from allenact.base_abstractions.sensor import SensorSuite, Sensor, ExpertActionSensor
 from allenact.embodiedai.mapping.mapping_models.active_neural_slam import (
     ActiveNeuralSLAM,
@@ -14,7 +12,8 @@ from allenact_plugins.ithor_plugin.ithor_sensors import (
     RelativePositionChangeTHORSensor,
     ReachableBoundsTHORSensor,
 )
-from baseline_configs.rearrange_base import RearrangeBaseExperimentConfig
+from torch import nn
+
 from baseline_configs.two_phase.two_phase_rgb_resnet_ppowalkthrough_ilunshuffle import (
     TwoPhaseRGBResNetPPOWalkthroughILUnshuffleExperimentConfig,
 )
@@ -52,54 +51,54 @@ class TwoPhaseRGBResNetFrozenMapPPOWalkthroughILUnshuffleExperimentConfig(
         resolution_in_cm=5,
     )
 
-    SENSORS = [
-        ExpertActionSensor(len(RearrangeBaseExperimentConfig.actions())),
-        RGBRearrangeSensor(
-            height=RearrangeBaseExperimentConfig.SCREEN_SIZE,
-            width=RearrangeBaseExperimentConfig.SCREEN_SIZE,
-            use_resnet_normalization=True,
-            uuid=RearrangeBaseExperimentConfig.EGOCENTRIC_RGB_UUID,
-        ),
-        ClosestUnshuffledRGBRearrangeSensor(
-            height=RearrangeBaseExperimentConfig.SCREEN_SIZE,
-            width=RearrangeBaseExperimentConfig.SCREEN_SIZE,
-            use_resnet_normalization=True,
-            uuid=RearrangeBaseExperimentConfig.UNSHUFFLED_RGB_UUID,
-        ),
-        InWalkthroughPhaseSensor(),
-        RelativePositionChangeTHORSensor(),
-        MAP_RANGE_SENSOR,
-    ]
+    def sensors(self):
+        return [
+            ExpertActionSensor(len(self.actions())),
+            RGBRearrangeSensor(
+                height=self.SCREEN_SIZE,
+                width=self.SCREEN_SIZE,
+                use_resnet_normalization=True,
+                uuid=self.EGOCENTRIC_RGB_UUID,
+            ),
+            ClosestUnshuffledRGBRearrangeSensor(
+                height=self.SCREEN_SIZE,
+                width=self.SCREEN_SIZE,
+                use_resnet_normalization=True,
+                uuid=self.UNSHUFFLED_RGB_UUID,
+            ),
+            InWalkthroughPhaseSensor(),
+            RelativePositionChangeTHORSensor(),
+            self.MAP_RANGE_SENSOR,
+        ]
 
     @classmethod
     def tag(cls) -> str:
         return f"TwoPhaseRGBResNetFrozenMapPPOWalkthroughILUnshuffle_{cls.IL_PIPELINE_TYPE}"
 
-    @classmethod
-    def create_model(cls, **kwargs) -> nn.Module:
+    def create_model(self, **kwargs) -> nn.Module:
         def get_sensor_uuid(stype: Type[Sensor]) -> Optional[str]:
-            s = next((s for s in cls.SENSORS if isinstance(s, stype)), None,)
+            s = next((s for s in self.sensors() if isinstance(s, stype)), None,)
             return None if s is None else s.uuid
 
         walkthrougher_should_ignore_action_mask = [
-            any(k in a for k in ["drop", "open", "pickup"]) for a in cls.actions()
+            any(k in a for k in ["drop", "open", "pickup"]) for a in self.actions()
         ]
 
         map_kwargs = dict(
-            frame_height=224,
-            frame_width=224,
-            vision_range_in_cm=cls.MAP_INFO["vision_range_in_cm"],
-            resolution_in_cm=cls.MAP_INFO["resolution_in_cm"],
-            map_size_in_cm=cls.MAP_INFO["map_size_in_cm"],
+            frame_height=self.SCREEN_SIZE,
+            frame_width=self.SCREEN_SIZE,
+            vision_range_in_cm=self.MAP_INFO["vision_range_in_cm"],
+            resolution_in_cm=self.MAP_INFO["resolution_in_cm"],
+            map_size_in_cm=self.MAP_INFO["map_size_in_cm"],
         )
 
         observation_space = (
-            SensorSuite(cls.SENSORS).observation_spaces
+            SensorSuite(self.sensors()).observation_spaces
             if kwargs.get("sensor_preprocessor_graph") is None
             else kwargs["sensor_preprocessor_graph"].observation_spaces
         )
 
-        semantic_map_channels = len(cls.ORDERED_OBJECT_TYPES)
+        semantic_map_channels = len(self.ORDERED_OBJECT_TYPES)
         height_map_channels = 3
         map_kwargs["n_map_channels"] = height_map_channels + semantic_map_channels
         frozen_map = ActiveNeuralSLAM(**map_kwargs, use_resnet_layernorm=True)
@@ -121,12 +120,12 @@ class TwoPhaseRGBResNetFrozenMapPPOWalkthroughILUnshuffleExperimentConfig(
             map=frozen_map,
             semantic_map_channels=semantic_map_channels,
             height_map_channels=height_map_channels,
-            action_space=gym.spaces.Discrete(len(cls.actions())),
+            action_space=gym.spaces.Discrete(len(self.actions())),
             observation_space=observation_space,
-            rgb_uuid=cls.EGOCENTRIC_RGB_UUID,
+            rgb_uuid=self.EGOCENTRIC_RGB_UUID,
             in_walkthrough_phase_uuid=get_sensor_uuid(InWalkthroughPhaseSensor),
-            is_walkthrough_phase_embedding_dim=cls.IS_WALKTHROUGH_PHASE_EMBEDING_DIM,
-            rnn_type=cls.RNN_TYPE,
+            is_walkthrough_phase_embedding_dim=self.IS_WALKTHROUGH_PHASE_EMBEDING_DIM,
+            rnn_type=self.RNN_TYPE,
             walkthrougher_should_ignore_action_mask=walkthrougher_should_ignore_action_mask,
-            done_action_index=cls.actions().index("done"),
+            done_action_index=self.actions().index("done"),
         )

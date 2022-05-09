@@ -13,27 +13,31 @@ from rearrange.tasks import RearrangeTaskSampler
 
 
 class WalkthroughBaseExperimentConfig(RearrangeBaseExperimentConfig):
-    SENSORS = [
-        UnshuffledRGBRearrangeSensor(
-            height=RearrangeBaseExperimentConfig.SCREEN_SIZE,
-            width=RearrangeBaseExperimentConfig.SCREEN_SIZE,
-            use_resnet_normalization=True,
-            uuid=RearrangeBaseExperimentConfig.UNSHUFFLED_RGB_UUID,
-        ),
-    ]
-
     # Sensor info
     EGOCENTRIC_RGB_UUID = RearrangeBaseExperimentConfig.UNSHUFFLED_RGB_UUID
     EGOCENTRIC_RGB_RESNET_UUID = (
         RearrangeBaseExperimentConfig.UNSHUFFLED_RGB_RESNET_UUID
     )
 
-    THOR_CONTROLLER_KWARGS = {
-        **RearrangeBaseExperimentConfig.THOR_CONTROLLER_KWARGS,
-        "snapToGrid": False,
-    }
     FORCE_AXIS_ALIGNED_START = False
     RANDOMIZE_START_ROTATION_DURING_TRAINING = True
+
+    def sensors(self) -> Sequence[Sensor]:
+        return [
+            UnshuffledRGBRearrangeSensor(
+                height=self.SCREEN_SIZE,
+                width=self.SCREEN_SIZE,
+                use_resnet_normalization=True,
+                uuid=RearrangeBaseExperimentConfig.UNSHUFFLED_RGB_UUID,
+            ),
+        ]
+
+    @property
+    def THOR_CONTROLLER_KWARGS(self):
+        return {
+            **super(WalkthroughBaseExperimentConfig, self).THOR_CONTROLLER_KWARGS,
+            "snapToGrid": False,
+        }
 
     @classmethod
     def actions(cls):
@@ -55,9 +59,8 @@ class WalkthroughBaseExperimentConfig(RearrangeBaseExperimentConfig):
             )
         )
 
-    @classmethod
     def make_sampler_fn(
-        cls,
+        self,
         stage: str,
         force_cache_reset: bool,
         allowed_scenes: Optional[Sequence[str]],
@@ -69,7 +72,7 @@ class WalkthroughBaseExperimentConfig(RearrangeBaseExperimentConfig):
         **kwargs,
     ) -> RearrangeTaskSampler:
         """Return an RearrangeTaskSampler."""
-        sensors = cls.SENSORS if sensors is None else sensors
+        sensors = self.sensors() if sensors is None else sensors
         if "mp_ctx" in kwargs:
             del kwargs["mp_ctx"]
         return RearrangeTaskSampler.from_fixed_dataset(
@@ -80,10 +83,10 @@ class WalkthroughBaseExperimentConfig(RearrangeBaseExperimentConfig):
             scene_to_allowed_rearrange_inds=scene_to_allowed_rearrange_inds,
             rearrange_env_kwargs=dict(
                 force_cache_reset=force_cache_reset,
-                **cls.REARRANGE_ENV_KWARGS,
+                **self.REARRANGE_ENV_KWARGS,
                 controller_kwargs={
                     "x_display": x_display,
-                    **cls.THOR_CONTROLLER_KWARGS,
+                    **self.THOR_CONTROLLER_KWARGS,
                     "renderDepthImage": any(
                         isinstance(s, DepthSensor) for s in sensors
                     ),
@@ -94,11 +97,11 @@ class WalkthroughBaseExperimentConfig(RearrangeBaseExperimentConfig):
             ),
             seed=seed,
             sensors=SensorSuite(sensors),
-            max_steps=cls.MAX_STEPS,
-            discrete_actions=cls.actions(),
-            require_done_action=cls.REQUIRE_DONE_ACTION,
-            force_axis_aligned_start=cls.FORCE_AXIS_ALIGNED_START,
+            max_steps=self.MAX_STEPS,
+            discrete_actions=self.actions(),
+            require_done_action=self.REQUIRE_DONE_ACTION,
+            force_axis_aligned_start=self.FORCE_AXIS_ALIGNED_START,
             randomize_start_rotation=stage == "train"
-            and cls.RANDOMIZE_START_ROTATION_DURING_TRAINING,
+            and self.RANDOMIZE_START_ROTATION_DURING_TRAINING,
             **kwargs,
         )

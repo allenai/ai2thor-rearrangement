@@ -4,6 +4,7 @@ from allenact.algorithms.onpolicy_sync.losses.imitation import Imitation
 from allenact.algorithms.onpolicy_sync.losses.ppo import PPOConfig
 from allenact.base_abstractions.sensor import ExpertActionSensor
 from allenact.utils.experiment_utils import LinearDecay, PipelineStage
+
 from baseline_configs.one_phase.one_phase_rgb_il_base import (
     il_training_params,
     StepwiseLinearDecay,
@@ -18,13 +19,15 @@ from rearrange.losses import MaskedPPO
 class TwoPhaseRGBPPOWalkthroughILUnshuffleExperimentConfig(
     TwoPhaseRGBBaseExperimentConfig
 ):
-    SENSORS = [
-        *TwoPhaseRGBBaseExperimentConfig.SENSORS,
-        ExpertActionSensor(len(RearrangeBaseExperimentConfig.actions())),
-    ]
 
     CNN_PREPROCESSOR_TYPE_AND_PRETRAINING = None
     IL_PIPELINE_TYPE: str = "40proc-longtf"
+
+    def sensors(self):
+        return [
+            *super(self, self).sensors(),
+            ExpertActionSensor(len(RearrangeBaseExperimentConfig.actions())),
+        ]
 
     @classmethod
     def tag(cls) -> str:

@@ -3,8 +3,6 @@ from typing import Sequence
 
 import gym
 import torch
-from torch import nn
-
 from allenact.base_abstractions.sensor import SensorSuite, Sensor
 from allenact.embodiedai.mapping.mapping_models.active_neural_slam import (
     ActiveNeuralSLAM,
@@ -14,6 +12,8 @@ from allenact_plugins.ithor_plugin.ithor_sensors import (
     RelativePositionChangeTHORSensor,
     ReachableBoundsTHORSensor,
 )
+from torch import nn
+
 from baseline_configs.one_phase.one_phase_rgb_il_base import (
     OnePhaseRGBILBaseExperimentConfig,
 )
@@ -46,11 +46,10 @@ class OnePhaseRGBResNetFrozenMapDaggerExperimentConfig(
         resolution_in_cm=5,
     )
 
-    @classmethod
-    def sensors(cls) -> Sequence[Sensor]:
+    def sensors(self) -> Sequence[Sensor]:
         return list(
-            super(OnePhaseRGBResNetFrozenMapDaggerExperimentConfig, cls).sensors()
-        ) + [RelativePositionChangeTHORSensor(), cls.MAP_RANGE_SENSOR,]
+            super(OnePhaseRGBResNetFrozenMapDaggerExperimentConfig, self).sensors()
+        ) + [RelativePositionChangeTHORSensor(), self.MAP_RANGE_SENSOR,]
 
     @classmethod
     def tag(cls) -> str:

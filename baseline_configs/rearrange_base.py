@@ -8,10 +8,6 @@ import gym.spaces
 import stringcase
 import torch
 import torchvision.models
-from torch import nn, cuda, optim
-from torch.optim.lr_scheduler import LambdaLR
-
-import datagen.datagen_utils as datagen_utils
 from allenact.base_abstractions.experiment_config import (
     ExperimentConfig,
     MachineParams,
@@ -28,6 +24,10 @@ from allenact_plugins.ithor_plugin.ithor_sensors import (
     SemanticMapTHORSensor,
 )
 from allenact_plugins.ithor_plugin.ithor_util import get_open_x_displays
+from torch import nn, cuda, optim
+from torch.optim.lr_scheduler import LambdaLR
+
+import datagen.datagen_utils as datagen_utils
 from rearrange.baseline_models import (
     RearrangeActorCriticSimpleConvRNN,
     ResNetRearrangeActorCriticRNN,
@@ -48,17 +48,6 @@ class RearrangeBaseExperimentConfig(ExperimentConfig):
     RANDOMIZE_START_ROTATION_DURING_TRAINING = False
 
     # Environment parameters
-    REARRANGE_ENV_KWARGS = dict(mode=RearrangeMode.SNAP,)
-    SCREEN_SIZE = 224
-    THOR_CONTROLLER_KWARGS = {
-        "rotateStepDegrees": 90,
-        "snapToGrid": True,
-        "quality": "Very Low",
-        "width": SCREEN_SIZE,
-        "height": SCREEN_SIZE,
-        "commit_id": THOR_COMMIT_ID,
-        "fastActionEmit": True,
-    }
     INCLUDE_OTHER_MOVE_ACTIONS = True
 
     # Training parameters
@@ -67,7 +56,6 @@ class RearrangeBaseExperimentConfig(ExperimentConfig):
     CNN_PREPROCESSOR_TYPE_AND_PRETRAINING: Optional[Tuple[str, str]] = None
 
     # Sensor info
-    SENSORS: Optional[Sequence[Sensor]] = None
     EGOCENTRIC_RGB_UUID = "rgb"
     UNSHUFFLED_RGB_UUID = "unshuffled_rgb"
     EGOCENTRIC_RGB_RESNET_UUID = "rgb_resnet"
@@ -93,9 +81,33 @@ class RearrangeBaseExperimentConfig(ExperimentConfig):
         )
     )
 
-    @classmethod
-    def sensors(cls) -> Sequence[Sensor]:
-        return cls.SENSORS
+    def __init__(self, screen_size: int = 224, quality="Very Low"):
+        self.screen_size = screen_size
+        self.quality = quality
+
+    @property
+    def SCREEN_SIZE(self):
+        return self.screen_size
+
+    @property
+    def REARRANGE_ENV_KWARGS(self):
+        return dict(mode=RearrangeMode.SNAP,)
+
+    @property
+    def THOR_CONTROLLER_KWARGS(self):
+        return {
+            "rotateStepDegrees": 90,
+            "snapToGrid": True,
+            "quality": self.quality,
+            "width": self.SCREEN_SIZE,
+            "height": self.SCREEN_SIZE,
+            "commit_id": THOR_COMMIT_ID,
+            "fastActionEmit": True,
+        }
+
+    @abstractmethod
+    def sensors(self) -> Sequence[Sensor]:
+        raise NotImplementedError
 
     @classmethod
     def actions(cls):
@@ -120,18 +132,17 @@ class RearrangeBaseExperimentConfig(ExperimentConfig):
             )
         )
 
-    @classmethod
-    def resnet_preprocessor_graph(cls, mode: str) -> SensorPreprocessorGraph:
+    def resnet_preprocessor_graph(self, mode: str) -> SensorPreprocessorGraph:
         def create_resnet_builder(in_uuid: str, out_uuid: str):
-            cnn_type, pretraining_type = cls.CNN_PREPROCESSOR_TYPE_AND_PRETRAINING
+            cnn_type, pretraining_type = self.CNN_PREPROCESSOR_TYPE_AND_PRETRAINING
             if pretraining_type == "imagenet":
                 assert cnn_type in [
                     "RN18",
                     "RN50",
                 ], "Only allow using RN18/RN50 with `imagenet` pretrained weights."
                 return ResNetPreprocessor(
-                    input_height=cls.THOR_CONTROLLER_KWARGS["height"],
-                    input_width=cls.THOR_CONTROLLER_KWARGS["width"],
+                    input_height=self.THOR_CONTROLLER_KWARGS["height"],
+                    input_width=self.THOR_CONTROLLER_KWARGS["width"],
                     output_width=7,
                     output_height=7,
                     output_dims=512 if "18" in cnn_type else 2048,
@@ -161,12 +172,12 @@ class RearrangeBaseExperimentConfig(ExperimentConfig):
             else:
                 raise NotImplementedError
 
-        img_uuids = [cls.EGOCENTRIC_RGB_UUID, cls.UNSHUFFLED_RGB_UUID]
+        img_uuids = [self.EGOCENTRIC_RGB_UUID, self.UNSHUFFLED_RGB_UUID]
         return SensorPreprocessorGraph(
             source_observation_spaces=SensorSuite(
                 [
                     sensor
-                    for sensor in cls.sensors()
+                    for sensor in self.sensors()
                     if (mode == "train" or not isinstance(sensor, ExpertActionSensor))
                 ]
             ).observation_spaces,
@@ -190,15 +201,14 @@ class RearrangeBaseExperimentConfig(ExperimentConfig):
             )
         )
 
-    @classmethod
-    def machine_params(cls, mode="train", **kwargs) -> MachineParams:
+    def machine_params(self, mode="train", **kwargs) -> MachineParams:
         """Return the number of processes and gpu_ids to use with training."""
         num_gpus = cuda.device_count()
         has_gpu = num_gpus != 0
 
         sampler_devices = None
         if mode == "train":
-            nprocesses = cls.num_train_processes() if torch.cuda.is_available() else 1
+            nprocesses = self.num_train_processes() if torch.cuda.is_available() else 1
             devices = (
                 list(range(min(nprocesses, num_gpus)))
                 if has_gpu
@@ -223,14 +233,13 @@ class RearrangeBaseExperimentConfig(ExperimentConfig):
             nprocesses=nprocesses,
             devices=devices,
             sampler_devices=sampler_devices,
-            sensor_preprocessor_graph=cls.resnet_preprocessor_graph(mode=mode)
-            if cls.CNN_PREPROCESSOR_TYPE_AND_PRETRAINING is not None
+            sensor_preprocessor_graph=self.resnet_preprocessor_graph(mode=mode)
+            if self.CNN_PREPROCESSOR_TYPE_AND_PRETRAINING is not None
             else None,
         )
 
-    @classmethod
     def stagewise_task_sampler_args(
-        cls,
+        self,
         stage: str,
         process_ind: int,
         total_processes: int,
@@ -318,7 +327,7 @@ class RearrangeBaseExperimentConfig(ExperimentConfig):
             },
         }
 
-        sensors = kwargs.get("sensors", copy.deepcopy(cls.sensors()))
+        sensors = kwargs.get("sensors", copy.deepcopy(self.sensors()))
         kwargs["sensors"] = sensors
 
         sem_sensor = next(
@@ -355,9 +364,8 @@ class RearrangeBaseExperimentConfig(ExperimentConfig):
             ]
         return kwargs
 
-    @classmethod
     def train_task_sampler_args(
-        cls,
+        self,
         process_ind: int,
         total_processes: int,
         devices: Optional[List[int]] = None,
@@ -367,7 +375,7 @@ class RearrangeBaseExperimentConfig(ExperimentConfig):
         return dict(
             force_cache_reset=False,
             epochs=float("inf"),
-            **cls.stagewise_task_sampler_args(
+            **self.stagewise_task_sampler_args(
                 stage="train",
                 process_ind=process_ind,
                 total_processes=total_processes,
@@ -377,9 +385,8 @@ class RearrangeBaseExperimentConfig(ExperimentConfig):
             ),
         )
 
-    @classmethod
     def valid_task_sampler_args(
-        cls,
+        self,
         process_ind: int,
         total_processes: int,
         devices: Optional[List[int]] = None,
@@ -389,7 +396,7 @@ class RearrangeBaseExperimentConfig(ExperimentConfig):
         return dict(
             force_cache_reset=True,
             epochs=1,
-            **cls.stagewise_task_sampler_args(
+            **self.stagewise_task_sampler_args(
                 stage="valid",
                 allowed_rearrange_inds_subset=tuple(range(10)),
                 process_ind=process_ind,
@@ -400,9 +407,8 @@ class RearrangeBaseExperimentConfig(ExperimentConfig):
             ),
         )
 
-    @classmethod
     def test_task_sampler_args(
-        cls,
+        self,
         process_ind: int,
         total_processes: int,
         devices: Optional[List[int]] = None,
@@ -432,7 +438,7 @@ class RearrangeBaseExperimentConfig(ExperimentConfig):
             force_cache_reset=True,
             epochs=1,
             task_spec_in_metrics=task_spec_in_metrics,
-            **cls.stagewise_task_sampler_args(
+            **self.stagewise_task_sampler_args(
                 stage=stage,
                 allowed_rearrange_inds_subset=allowed_rearrange_inds_subset,
                 process_ind=process_ind,

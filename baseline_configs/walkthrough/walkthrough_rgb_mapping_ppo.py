@@ -1,11 +1,10 @@
-from typing import Dict, Any, cast
+from typing import Dict, Any, cast, Sequence
 
 import gym
 import torch
-
 from allenact.algorithms.onpolicy_sync.losses import PPO
 from allenact.algorithms.onpolicy_sync.losses.ppo import PPOConfig
-from allenact.base_abstractions.sensor import SensorSuite
+from allenact.base_abstractions.sensor import SensorSuite, Sensor
 from allenact.embodiedai.mapping.mapping_losses import (
     BinnedPointCloudMapLoss,
     SemanticMapFocalLoss,
@@ -18,6 +17,7 @@ from allenact_plugins.ithor_plugin.ithor_sensors import (
     SemanticMapTHORSensor,
 )
 from allenact_plugins.robothor_plugin.robothor_sensors import DepthSensorThor
+
 from baseline_configs.walkthrough.walkthrough_rgb_base import (
     WalkthroughBaseExperimentConfig,
 )
@@ -43,20 +43,23 @@ class WalkthroughRGBMappingPPOExperimentConfig(WalkthroughBaseExperimentConfig):
         resolution_in_cm=5,
     )
 
-    SENSORS = WalkthroughBaseExperimentConfig.SENSORS + [
-        RelativePositionChangeTHORSensor(),
-        MAP_RANGE_SENSOR,
-        DepthSensorThor(
-            height=WalkthroughBaseExperimentConfig.SCREEN_SIZE,
-            width=WalkthroughBaseExperimentConfig.SCREEN_SIZE,
-            use_normalization=False,
-            uuid="depth",
-        ),
-        BinnedPointCloudMapTHORSensor(fov=FOV, **MAP_INFO),
-        SemanticMapTHORSensor(
-            fov=FOV, **MAP_INFO, ordered_object_types=ORDERED_OBJECT_TYPES,
-        ),
-    ]
+    def sensors(self) -> Sequence[Sensor]:
+        return super(WalkthroughRGBMappingPPOExperimentConfig, self).sensors() + [
+            RelativePositionChangeTHORSensor(),
+            self.MAP_RANGE_SENSOR,
+            DepthSensorThor(
+                height=self.SCREEN_SIZE,
+                width=self.SCREEN_SIZE,
+                use_normalization=False,
+                uuid="depth",
+            ),
+            BinnedPointCloudMapTHORSensor(fov=FOV, **self.MAP_INFO),
+            SemanticMapTHORSensor(
+                fov=FOV,
+                **self.MAP_INFO,
+                ordered_object_types=self.ORDERED_OBJECT_TYPES,
+            ),
+        ]
 
     @classmethod
     def tag(cls) -> str:
@@ -66,34 +69,35 @@ class WalkthroughRGBMappingPPOExperimentConfig(WalkthroughBaseExperimentConfig):
     def num_train_processes(cls) -> int:
         return max(1, torch.cuda.device_count() * 5)
 
-    @classmethod
-    def create_model(cls, **kwargs) -> WalkthroughActorCriticResNetWithPassiveMap:
+    def create_model(self, **kwargs) -> WalkthroughActorCriticResNetWithPassiveMap:
         map_sensor = cast(
             BinnedPointCloudMapTHORSensor,
             next(
-                s for s in cls.SENSORS if isinstance(s, BinnedPointCloudMapTHORSensor)
+                s
+                for s in self.sensors()
+                if isinstance(s, BinnedPointCloudMapTHORSensor)
             ),
         )
         map_kwargs = dict(
-            frame_height=224,
-            frame_width=224,
+            frame_height=self.SCREEN_SIZE,
+            frame_width=self.SCREEN_SIZE,
             vision_range_in_cm=map_sensor.vision_range_in_cm,
             resolution_in_cm=map_sensor.resolution_in_cm,
             map_size_in_cm=map_sensor.map_size_in_cm,
         )
 
         observation_space = (
-            SensorSuite(cls.SENSORS).observation_spaces
+            SensorSuite(self.sensors()).observation_spaces
             if kwargs.get("sensor_preprocessor_graph") is None
             else kwargs["sensor_preprocessor_graph"].observation_spaces
         )
 
         return WalkthroughActorCriticResNetWithPassiveMap(
-            action_space=gym.spaces.Discrete(len(cls.actions())),
+            action_space=gym.spaces.Discrete(len(self.actions())),
             observation_space=observation_space,
-            rgb_uuid=cls.EGOCENTRIC_RGB_UUID,
-            unshuffled_rgb_uuid=cls.UNSHUFFLED_RGB_UUID,
-            semantic_map_channels=len(cls.ORDERED_OBJECT_TYPES),
+            rgb_uuid=self.EGOCENTRIC_RGB_UUID,
+            unshuffled_rgb_uuid=self.UNSHUFFLED_RGB_UUID,
+            semantic_map_channels=len(self.ORDERED_OBJECT_TYPES),
             height_map_channels=3,
             map_kwargs=map_kwargs,
         )
