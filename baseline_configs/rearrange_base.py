@@ -398,7 +398,7 @@ class RearrangeBaseExperimentConfig(ExperimentConfig):
             epochs=1,
             **self.stagewise_task_sampler_args(
                 stage="valid",
-                allowed_rearrange_inds_subset=tuple(range(10)),
+                allowed_rearrange_inds_subset=tuple(range(0, 50, 5)),
                 process_ind=process_ind,
                 total_processes=total_processes,
                 devices=devices,
