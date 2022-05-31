@@ -29,7 +29,6 @@ class TwoPhaseRGBBaseExperimentConfig(RearrangeBaseExperimentConfig, ABC):
     IS_WALKTHROUGH_PHASE_EMBEDING_DIM: int = 32
     RNN_TYPE: str = "LSTM"
 
-
     def sensors(self):
         return [
             RGBRearrangeSensor(

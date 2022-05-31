@@ -25,6 +25,7 @@ from allenact_plugins.ithor_plugin.ithor_sensors import (
 )
 from allenact_plugins.ithor_plugin.ithor_util import get_open_x_displays
 from torch import nn, cuda, optim
+from torch.distributions.utils import lazy_property
 from torch.optim.lr_scheduler import LambdaLR
 
 import datagen.datagen_utils as datagen_utils
@@ -89,7 +90,7 @@ class RearrangeBaseExperimentConfig(ExperimentConfig):
     def SCREEN_SIZE(self):
         return self.screen_size
 
-    @property
+    @lazy_property
     def REARRANGE_ENV_KWARGS(self):
         return dict(mode=RearrangeMode.SNAP,)
 
