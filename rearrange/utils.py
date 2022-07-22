@@ -408,7 +408,17 @@ class ObjectInteractablePostionsCache:
         self.ndigits = ndigits
         self.max_size = max_size
 
-    def _get_key(self, scene_name: str, obj: Dict[str, Any]):
+    def reset_cache(self):
+        self._key_to_positions.clear()
+
+    def _get_key(
+        self,
+        scene_name: str,
+        obj: Dict[str, Any],
+        hor: Optional[float],
+        stand: Optional[bool],
+        include_options: bool = False,
+    ):
         p = obj["position"]
         return (
             scene_name,
@@ -416,7 +426,7 @@ class ObjectInteractablePostionsCache:
             round(p["x"], self.ndigits),
             round(p["y"], self.ndigits),
             round(p["z"], self.ndigits),
-        )
+        ) + ((hor, stand) if include_options else ())
 
     def get(
         self,
@@ -425,25 +435,47 @@ class ObjectInteractablePostionsCache:
         controller: ai2thor.controller.Controller,
         reachable_positions: Optional[Sequence[Dict[str, float]]] = None,
         force_cache_refresh: bool = False,
+        force_horizon: Optional[int] = None,
+        force_standing: Optional[bool] = None,
+        avoid_teleport: bool = False,
     ) -> List[Dict[str, Union[float, int, bool]]]:
         scene_name = scene_name.replace("_physics", "")
-        obj_key = self._get_key(scene_name=scene_name, obj=obj)
+
+        env = None
+        include_options_in_key = False
+        if hasattr(controller, "controller"):
+            env = controller
+            controller = env.controller
+            include_options_in_key = True
+
+        obj_key = self._get_key(
+            scene_name=scene_name,
+            obj=obj,
+            hor=force_horizon,
+            stand=force_standing,
+            include_options=include_options_in_key,
+        )
 
         if force_cache_refresh or obj_key not in self._key_to_positions:
             with include_object_data(controller):
                 metadata = controller.last_event.metadata
 
-            cur_scene_name = metadata["sceneName"].replace("_physics", "")
+            if env is None:
+                cur_scene_name = metadata["sceneName"].replace("_physics", "")
+                key = "name"
+            else:
+                cur_scene_name = env.scene
+                key = "objectId"
             assert (
                 scene_name == cur_scene_name
             ), f"Scene names must match when filling a cache miss ({scene_name} != {cur_scene_name})."
 
             obj_in_scene = next(
-                (o for o in metadata["objects"] if o["name"] == obj["name"]), None,
+                (o for o in metadata["objects"] if o[key] == obj[key]), None,
             )
             if obj_in_scene is None:
                 raise RuntimeError(
-                    f"Object with name {obj['name']} must be in the scene when filling a cache miss"
+                    f"Object with name {obj[key]} must be in the scene when filling a cache miss"
                 )
 
             desired_pos = obj["position"]
@@ -455,7 +487,7 @@ class ObjectInteractablePostionsCache:
             should_teleport = (
                 IThorEnvironment.position_dist(desired_pos, cur_pos) >= 1e-3
                 or IThorEnvironment.rotation_dist(desired_rot, cur_rot) >= 1
-            )
+            ) and not avoid_teleport
 
             object_held = obj_in_scene["isPickedUp"]
             physics_was_unpaused = controller.last_event.metadata.get(
@@ -483,10 +515,17 @@ class ObjectInteractablePostionsCache:
                 )
                 assert event.metadata["lastActionSuccess"]
 
+            options = {}
+            if force_standing is not None:
+                options["standings"] = [force_standing]
+            if force_horizon is not None:
+                options["horizons"] = [force_horizon]
+
             metadata = controller.step(
                 action="GetInteractablePoses",
                 objectId=obj["objectId"],
                 positions=reachable_positions,
+                **options,
             ).metadata
             assert metadata["lastActionSuccess"]
             self._key_to_positions[obj_key] = metadata["actionReturn"]

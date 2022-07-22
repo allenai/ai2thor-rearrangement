@@ -9,7 +9,7 @@ from typing import Optional, List, Sequence
 import ai2thor.platform
 import torch
 
-from allenact.base_abstractions.sensor import ExpertActionSensor
+from allenact.base_abstractions.sensor import ExpertActionSensor, Sensor
 from allenact.utils.misc_utils import partition_sequence, md5_hash_str_as_int
 from allenact.utils.system import get_logger
 from allenact_plugins.ithor_plugin.ithor_sensors import (
@@ -19,59 +19,63 @@ from allenact_plugins.ithor_plugin.ithor_sensors import (
 from allenact_plugins.ithor_plugin.ithor_util import get_open_x_displays
 
 
-def get_scenes(stage: str) -> List[str]:
-    """Returns a list of iTHOR scene names for each stage."""
-    assert stage in {
-        "train",
-        "train_unseen",
-        "val",
-        "valid",
-        "test",
-        "all",
-        "ithor_mini_val",
-        "debug",
-    }
+class EvalLoaderMixin:
+    DATA_PREFIX = ""
+    SAMPLER_STAGE = "ithor_mini_val"
 
-    if stage == "debug":
-        return ["FloorPlan1"]
+    @staticmethod
+    def get_scenes(stage: str) -> List[str]:
+        """Returns a list of iTHOR scene names for each stage."""
+        assert stage in {
+            "train",
+            "train_unseen",
+            "val",
+            "valid",
+            "test",
+            "all",
+            "ithor_mini_val",
+            "debug",
+        }
 
-    # [1-20] for train, [21-25] for val, [26-30] for test
-    if stage in ["train", "train_unseen"]:
-        scene_nums = range(1, 21)
-    elif stage in ["val", "valid", "ithor_mini_val"]:
-        scene_nums = range(21, 26)
-    elif stage == "test":
-        scene_nums = range(26, 31)
-    elif stage == "all":
-        scene_nums = range(1, 31)
-    else:
-        raise NotImplementedError
+        if stage == "debug":
+            return ["FloorPlan1"]
 
-    kitchens = [f"FloorPlan{i}" for i in scene_nums]
-    living_rooms = [f"FloorPlan{200+i}" for i in scene_nums]
-    bedrooms = [f"FloorPlan{300+i}" for i in scene_nums]
-    bathrooms = [f"FloorPlan{400+i}" for i in scene_nums]
-    return kitchens + living_rooms + bedrooms + bathrooms
+        # [1-20] for train, [21-25] for val, [26-30] for test
+        if stage in ["train", "train_unseen"]:
+            scene_nums = range(1, 21)
+        elif stage in ["val", "valid", "ithor_mini_val"]:
+            scene_nums = range(21, 26)
+        elif stage == "test":
+            scene_nums = range(26, 31)
+        elif stage == "all":
+            scene_nums = range(1, 31)
+        else:
+            raise NotImplementedError
 
+        kitchens = [f"FloorPlan{i}" for i in scene_nums]
+        living_rooms = [f"FloorPlan{200 + i}" for i in scene_nums]
+        bedrooms = [f"FloorPlan{300 + i}" for i in scene_nums]
+        bathrooms = [f"FloorPlan{400 + i}" for i in scene_nums]
+        return kitchens + living_rooms + bedrooms + bathrooms
 
-class EvalConfig(BaseConfig):
-    def stagewise_task_sampler_args(
+    @classmethod
+    def prepare_stagewise_task_sampler_args(
         self,
-        stage: str,
         process_ind: int,
         total_processes: int,
+        sensors: Sequence[Sensor],
         allowed_rearrange_inds_subset: Optional[Sequence[int]] = None,
         allowed_scenes: Sequence[str] = None,
         devices: Optional[List[int]] = None,
-        seeds: Optional[List[int]] = None,
-        deterministic_cudnn: bool = False,
     ):
+        stage = self.SAMPLER_STAGE
+
         if allowed_scenes is not None:
             scenes = allowed_scenes
         elif stage == "combined":
             # Split scenes more evenly as the train scenes will have more episodes
-            train_scenes = get_scenes("train")
-            other_scenes = get_scenes("val") + get_scenes("test")
+            train_scenes = self.get_scenes("train")
+            other_scenes = self.get_scenes("val") + self.get_scenes("test")
             assert len(train_scenes) == 2 * len(other_scenes)
             scenes = []
             while len(train_scenes) != 0:
@@ -80,7 +84,7 @@ class EvalConfig(BaseConfig):
                 scenes.append(other_scenes.pop())
             assert len(train_scenes) == len(other_scenes)
         else:
-            scenes = get_scenes(stage)
+            scenes = self.get_scenes(self.DATA_PREFIX + stage)
 
         if total_processes > len(scenes):
             assert stage == "train" and total_processes % len(scenes) == 0
@@ -130,20 +134,16 @@ class EvalConfig(BaseConfig):
                 gpu_device = device
                 thor_platform = ai2thor.platform.CloudRendering
 
-        kwargs = {
-            "stage": stage,
-            "allowed_scenes": allowed_scenes,
-            "scene_to_allowed_rearrange_inds": scene_to_allowed_rearrange_inds,
-            "seed": seed,
-            "x_display": x_display,
-            "thor_controller_kwargs": {
-                "gpu_device": gpu_device,
-                "platform": thor_platform,
-            },
-        }
+        kwargs = dict(
+            stage=stage,
+            allowed_scenes=allowed_scenes,
+            scene_to_allowed_rearrange_inds=scene_to_allowed_rearrange_inds,
+            seed=seed,
+            x_display=x_display,
+            thor_controller_kwargs=dict(gpu_device=gpu_device, platform=thor_platform,),
+        )
 
-        sensors = kwargs.get("sensors", copy.deepcopy(self.sensors()))
-        kwargs["sensors"] = sensors
+        kwargs["sensors"] = list(sensors)
 
         sem_sensor = next(
             (s for s in kwargs["sensors"] if isinstance(s, SemanticMapTHORSensor)), None
@@ -179,6 +179,11 @@ class EvalConfig(BaseConfig):
             ]
         return kwargs
 
+
+class EvalConfig(BaseConfig):
+    EVAL_MIXIN = EvalLoaderMixin
+
+    @classmethod
     def test_task_sampler_args(
         self,
         process_ind: int,
@@ -188,35 +193,14 @@ class EvalConfig(BaseConfig):
         deterministic_cudnn: bool = False,
         task_spec_in_metrics: bool = False,
     ):
-        task_spec_in_metrics = False
-
-        # Train_unseen
-        # stage = "train_unseen"
-        # allowed_rearrange_inds_subset = list(range(15))
-
-        # Val
-        stage = "ithor_mini_val"
-        allowed_rearrange_inds_subset = None
-
-        # Test
-        # stage = "test"
-        # allowed_rearrange_inds_subset = None
-
-        # Combined (Will run inference on all datasets)
-        # stage = "combined"
-        # allowed_rearrange_inds_subset = None
-
         return dict(
             force_cache_reset=True,
             epochs=1,
-            task_spec_in_metrics=task_spec_in_metrics,
-            **self.stagewise_task_sampler_args(
-                stage=stage,
-                allowed_rearrange_inds_subset=allowed_rearrange_inds_subset,
+            task_spec_in_metrics=False,
+            **self.EVAL_MIXIN.prepare_stagewise_task_sampler_args(
                 process_ind=process_ind,
                 total_processes=total_processes,
+                sensors=copy.deepcopy(self.sensors()),
                 devices=devices,
-                seeds=seeds,
-                deterministic_cudnn=deterministic_cudnn,
             ),
         )

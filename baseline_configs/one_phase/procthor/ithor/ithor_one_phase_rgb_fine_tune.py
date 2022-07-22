@@ -4,7 +4,7 @@ from allenact.utils.experiment_utils import (
 )
 from allenact.algorithms.onpolicy_sync.losses.imitation import Imitation
 
-from baseline_configs.one_phase.procthor.ithor.ithor_one_phase_rgb_il_base import (
+from baseline_configs.one_phase.one_phase_rgb_il_base import (
     OnePhaseRGBILBaseExperimentConfig,
 )
 
@@ -27,26 +27,23 @@ def il_finetuning_params(label: str):
 class OnePhaseRGBClipResNet50FineTuneExperimentConfig(
     OnePhaseRGBILBaseExperimentConfig
 ):
-    def __init__(
-        self,
-        cnn_preprocessor_type="RN50",
-        cnn_preprocessor_pretraining="clip",
-        include_other_move_actions=True,
-    ):
-        self.CNN_PREPROCESSOR_TYPE_AND_PRETRAINING = (
-            cnn_preprocessor_type,
-            cnn_preprocessor_pretraining,
-        )
-        self.IL_PIPELINE_TYPE = "40proc"
-        self.TRAINING_STEPS = int(100e6)
-        self.INCLUDE_OTHER_MOVE_ACTIONS = include_other_move_actions
+    CNN_PREPROCESSOR_TYPE_AND_PRETRAINING = (
+        "RN50",
+        "clip",
+    )
+    IL_PIPELINE_TYPE = "40proc"
+    TRAINING_STEPS = int(100e6)
+    INCLUDE_OTHER_MOVE_ACTIONS = True
 
+    @classmethod
     def tag(self) -> str:
         return f"iThorOnePhaseRGBClipResNet50FineTune"
 
-    def _use_label_to_get_training_params(self):
-        return il_finetuning_params(label=self.IL_PIPELINE_TYPE.lower())
+    @classmethod
+    def _use_label_to_get_training_params(cls):
+        return il_finetuning_params(label=cls.IL_PIPELINE_TYPE.lower())
 
+    @classmethod
     def _training_pipeline_info(self, **kwargs):
         """Define how the model trains."""
 

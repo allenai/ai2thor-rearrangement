@@ -618,14 +618,14 @@ scripts in case any user is interested in trying new episode distributions.
 For training, we use a dataset composed of 50,000 episodes sampled from 2,500 houses with one or two rooms.
 The following commands take for several hours on an 8-GPU machine with 56 CPU cores:
 ```bash
-python datagen/procthor_datagen/datagen_runner_train.py
+python datagen/procthor_datagen/datagen_runner.py
 inv make-procthor-mini-train
 ```
 
 To create a ProcTHOR mini-valid dataset, the following commands take for several hours on an 8-GPU machine
 with 56 CPU cores: 
 ```bash
-python datagen/procthor_datagen/datagen_runner_valid.py
+python datagen/procthor_datagen/datagen_runner.py -m val
 inv consolidate-procthor-val
 inv make-procthor-mini-val
 inv make-valid-houses-file
@@ -643,5 +643,16 @@ If you use this work, please cite [our CVPR'21 paper](https://arxiv.org/abs/2103
   booktitle = {IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
   month = {June},
   year = {2021}
+}
+```
+
+The ProcTHOR code and datasets were used for the Rearrangement experiments in
+```bibtex
+@article{Deitke2022ProcTHOR,
+  title={{ProcTHOR: Large-Scale Embodied AI Using Procedural Generation}},
+  author={Matt Deitke and Eli VanderBilt and Alvaro Herrasti and Luca Weihs and Jordi Salvador and Kiana Ehsani and Winson Han and Eric Kolve and Ali Farhadi and Aniruddha Kembhavi and Roozbeh Mottaghi},
+  journal={{ArXiv}},
+  year={2022},
+  volume={abs/2206.06994}
 }
 ```

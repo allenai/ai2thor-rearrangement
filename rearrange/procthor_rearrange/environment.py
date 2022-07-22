@@ -29,7 +29,7 @@ from shapely.ops import unary_union
 
 from utils.procthor_utils import Houses
 from rearrange.procthor_rearrange.constants import PROCTHOR_COMMIT_ID
-from rearrange.procthor_rearrange.utils import ObjectInteractablePostionsCache
+from rearrange.utils import ObjectInteractablePostionsCache
 from rearrange.environment import (
     RearrangeTaskSpec,
     RearrangeTHOREnvironment,

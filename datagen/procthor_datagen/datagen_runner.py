@@ -12,7 +12,6 @@ import warnings
 from collections import defaultdict
 from typing import List, Set, Dict, Optional, Any, cast
 import time
-import sys
 
 import compress_pickle
 import numpy as np
@@ -38,13 +37,12 @@ from rearrange.procthor_rearrange.environment import (
     RearrangeProcTHOREnvironment,
     RearrangeTaskSpec,
 )
+from rearrange.utils import extract_obj_data
 
 NUM_TRAIN_UNSEEN_EPISODES = 1_000  # 1 episode per scene
 NUM_TRAIN_SCENES = 10_000  # N episodes per scene
-NUM_VALID_SCENES = 1_000  # 10 episode per scene
+NUM_VALID_SCENES = 1_000  # 10 episodes per scene
 NUM_TEST_SCENES = 1_000  # 1 episode per scene
-
-SCENE_REUSE_COUNT = 10  # for valid
 
 MAX_ROOMS_IN_HOUSE = 2
 
@@ -401,6 +399,7 @@ def generate_one_rearrangement_given_initial_conditions(
         # to let physics settle.
         controller.step("Pass")
 
+    # get initial and post random spawn object data
     objects_after_first_irs = copy.deepcopy(env.objects())
 
     if any(o["isBroken"] for o in objects_after_first_irs):
@@ -421,6 +420,7 @@ def generate_one_rearrangement_given_initial_conditions(
         if object_ids_to_open is None:
             return None, None, None
 
+        # What if opening moved a pickupable? Get the updated list!
         objects_after_first_irs = copy.deepcopy(env.objects())
 
         if any(o["isBroken"] for o in objects_after_first_irs):
@@ -490,6 +490,7 @@ def generate_one_rearrangement_given_initial_conditions(
         if valid_pickupables_in_room_after_first_irs is None:
             return None, None, None
 
+        # Check all moved_obj_ids are in valid_pickupables_in_room_after_first_irs
         valid_ids_in_room = set(
             o["objectId"] for o in valid_pickupables_in_room_after_first_irs
         )
@@ -498,8 +499,6 @@ def generate_one_rearrangement_given_initial_conditions(
                 "ERROR: Some moved_obj_ids missing from target room after putting objects away"
             )
             return None, None, None
-
-    from rearrange.utils import extract_obj_data
 
     poses_after_first_irs = [
         extract_obj_data(obj)
@@ -742,12 +741,12 @@ def generate_rearrangement_for_scene(
     stage_seed: int,
     scene: str,
     env: RearrangeProcTHOREnvironment,
+    scene_reuse_count: int,
     object_types_to_not_move: Set[str],
     max_obj_rearrangements_per_scene: int = 5,
-    scene_reuse_count: int = SCENE_REUSE_COUNT,
     obj_name_to_avoid_positions: Optional[Dict[str, np.ndarray]] = None,
     force_visible: bool = True,
-    place_stationary: bool = True,  # Was False
+    place_stationary: bool = True,
     rotation_increment: int = 90,
     reuse_i: int = 0,
     stage: str = "train",
@@ -1076,7 +1075,7 @@ def find_limits_for_scene(
     env: RearrangeProcTHOREnvironment,
     object_types_to_not_move: Set[str],
     max_obj_rearrangements_per_scene: int = 5,
-    scene_reuse_count: int = SCENE_REUSE_COUNT,
+    scene_reuse_count: int = 0,
     obj_name_to_avoid_positions: Optional[Dict[str, np.ndarray]] = None,
     force_visible: bool = True,
     place_stationary: bool = False,
@@ -1156,13 +1155,22 @@ class RearrangeProcTHORDatagenWorker(Worker):
         self, task_type: Optional[str], task_info: Dict[str, Any]
     ) -> Optional[Any]:
         if task_type == "rearrange":
-            (scene, seed, stage, reuse_i, obj_name_to_avoid_positions, limits) = (
+            (
+                scene,
+                seed,
+                stage,
+                reuse_i,
+                obj_name_to_avoid_positions,
+                limits,
+                scene_reuse_count,
+            ) = (
                 task_info["scene"],
                 task_info["seed"],
                 task_info["stage"],
                 task_info["reuse_i"],
                 task_info["obj_name_to_avoid_positions"],
                 task_info["limits"],
+                task_info["scene_reuse_count"],
             )
 
             mode, idx = tuple(scene.split("_"))
@@ -1172,6 +1180,7 @@ class RearrangeProcTHORDatagenWorker(Worker):
                 stage_seed=seed,
                 scene=scene,
                 env=self.env,
+                scene_reuse_count=scene_reuse_count,
                 object_types_to_not_move=OBJECT_TYPES_TO_NOT_MOVE,
                 obj_name_to_avoid_positions=obj_name_to_avoid_positions,
                 reuse_i=reuse_i,
@@ -1209,6 +1218,7 @@ def args_parsing():
     parser = argparse.ArgumentParser()
     parser.add_argument("--debug", "-d", action="store_true", default=False)
     parser.add_argument("--train_unseen", "-t", action="store_true", default=False)
+    parser.add_argument("--mode", "-m", default="train")
     return parser.parse_args()
 
 
@@ -1225,10 +1235,15 @@ class RearrangeProcTHORDatagenManager(Manager):
 
             stage_seeds = get_random_seeds()
 
+            if args.mode == "train":
+                self.scene_reuse_count = 20
+            elif args.mode in ["val", "test"]:
+                self.scene_reuse_count = 10
+
             scene_to_obj_name_to_avoid_positions = None
             if args.debug:
-                partition = "valid"
-                idxs = "0"
+                partition = "train" if args.mode == "train" else "valid"
+                idxs = "0,1,2"
                 stage_to_scenes = {
                     "debug": [f"{partition}_{idx}" for idx in idxs.split(",")]
                 }
@@ -1249,7 +1264,7 @@ class RearrangeProcTHORDatagenManager(Manager):
                 }
                 stage_to_scenes = {
                     stage: [f"{stage}_{id}" for id in range(nums[stage])]
-                    for stage in ["val"]  # ("train", "val", "test")
+                    for stage in [args.mode]  # ("train", "val", "test")
                 }
 
             os.makedirs(STARTER_DATA_DIR, exist_ok=True)
@@ -1270,7 +1285,7 @@ class RearrangeProcTHORDatagenManager(Manager):
                     if scene not in self.stage_to_scene_to_rearrangements[stage]:
                         self.stage_to_scene_to_rearrangements[stage][scene] = [
                             -1
-                        ] * SCENE_REUSE_COUNT
+                        ] * self.scene_reuse_count
 
                     if scene_to_obj_name_to_avoid_positions is not None:
                         obj_name_to_avoid_positions = scene_to_obj_name_to_avoid_positions[
@@ -1293,7 +1308,9 @@ class RearrangeProcTHORDatagenManager(Manager):
         elif task_type == "find_limits":
             if result is not None:
                 task_info["limits"] = result
-                for reuse_i in range(SCENE_REUSE_COUNT):  # if not args.debug else 4):
+                for reuse_i in range(
+                    self.scene_reuse_count
+                ):  # if not args.debug else 4):
                     if (
                         self.stage_to_scene_to_rearrangements[task_info["stage"]][
                             task_info["scene"]
@@ -1301,6 +1318,7 @@ class RearrangeProcTHORDatagenManager(Manager):
                         == -1
                     ):
                         task_info["reuse_i"] = reuse_i
+                        task_info["scene_reuse_count"] = self.scene_reuse_count
                         self.enqueue(
                             task_type="rearrange", task_info=copy.deepcopy(task_info),
                         )
@@ -1347,6 +1365,12 @@ class RearrangeProcTHORDatagenManager(Manager):
 
 if __name__ == "__main__":
     args = args_parsing()
+
+    print(f"Using args {args}")
+
+    assert args.mode in ["val", "test", "train"]
+    if args.train_unseen:
+        assert args.mode == "train"
 
     RearrangeProcTHORDatagenManager(
         worker_class=RearrangeProcTHORDatagenWorker,

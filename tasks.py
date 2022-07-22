@@ -39,7 +39,7 @@ def consolidate_train_dataset(ctx, output_name="train_consolidated"):
     import os
     import compress_pickle
 
-    from datagen.procthor_datagen.datagen_runner_train import STARTER_DATA_DIR
+    from datagen.procthor_datagen.datagen_runner import STARTER_DATA_DIR
 
     path = os.path.join(STARTER_DATA_DIR, f"train.pkl.gz")
     if os.path.exists(path):
@@ -110,7 +110,7 @@ def consolidate_procthor_val(ctx, output_name="val_consolidated"):
     import os
     import compress_pickle
 
-    from datagen.procthor_datagen.datagen_runner_train import STARTER_DATA_DIR
+    from datagen.procthor_datagen.datagen_runner import STARTER_DATA_DIR
 
     random.seed(123456)
 

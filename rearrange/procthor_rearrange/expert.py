@@ -1257,7 +1257,7 @@ if __name__ == "__main__":
         import numpy as np
 
         # noinspection PyUnresolvedReferences
-        from baseline_configs.one_phase.procthor.procthor.one_phase import (
+        from baseline_configs.one_phase.procthor.one_phase_rgb_clip_dagger import (
             ProcThorOnePhaseRGBClipResNet50DaggerTrainMultiNodeConfig as Config,
         )
 
@@ -1371,7 +1371,7 @@ if __name__ == "__main__":
 
     init_logging("debug")
     test(
-        stage="debug",
+        stage="mini_val_consolidated",
         skip_between_tasks=0,
         random_action_prob=0.0,
         explore=False,
