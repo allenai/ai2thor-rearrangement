@@ -597,14 +597,14 @@ allenact -b baseline_configs/one_phase/procthor/eval eval_minivalid_procthor \
 #### Fine-tune model in iTHOR (single machine)
 
 The following will take for about two days on an 8-GPU machine with 56 CPU cores.
-Assuming the chosen checkpoint from ProcTHOR pre-training has path CKPT_PATH:
+Assuming the chosen checkpoint from ProcTHOR pre-training has path `CKPT_PATH`:
 ```bash
 allenact -b baseline_configs/one_phase/procthor/ithor ithor_one_phase_rgb_fine_tune \
  -s 12345 -c CKPT_PATH --restart_pipeline
 ```
 
 #### iTHOR mini validation
-Run iTHOR mini-valid on checkpoints under directory CKPT_DIR:
+Run iTHOR mini-valid on checkpoints under `CKPT_DIR`:
 ```bash
 inv make-ithor-mini-val
 allenact -b baseline_configs/one_phase/procthor/eval eval_minivalid_ithor \
