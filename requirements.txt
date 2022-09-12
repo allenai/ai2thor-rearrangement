@@ -17,3 +17,4 @@ shapely
 ffmpeg-python
 h5py
 git+https://github.com/openai/CLIP.git
+prior

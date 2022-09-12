@@ -159,3 +159,6 @@ cython_debug/
 
 # PyCharm settings
 .idea/
+
+# procthor datasets
+data/2022procthor

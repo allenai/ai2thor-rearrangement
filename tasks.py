@@ -661,3 +661,66 @@ def make_procthor_mini_train(
     split_data(ctx, mode="train", input_name="train_consolidated")
 
     print("DONE")
+
+
+@task
+def install_procthor_dataset(ctx):
+    import prior
+    from rearrange_constants import ABS_PATH_OF_REARRANGE_TOP_LEVEL_DIR
+
+    all_data = prior.load_dataset("procthor_rearrangement_2022")
+
+    for partition in ["val", "train"]:
+        output_partition = f"mini_{partition}" if partition in ["val"] else partition
+
+        print(f"{output_partition}...")
+
+        num_episodes = 0
+
+        current_dir = os.path.join(
+            ABS_PATH_OF_REARRANGE_TOP_LEVEL_DIR,
+            "data",
+            "2022procthor",
+            f"split_{output_partition}",
+        )
+        os.makedirs(current_dir, exist_ok=True)
+
+        consolidated_data = {}
+
+        for part, compressed_part_data in all_data[partition]:
+            print(f"{part}")
+
+            # each part is a compressed_pickle
+            cur_data = compress_pickle.loads(
+                data=compressed_part_data, compression="gzip"
+            )
+
+            with open(os.path.join(current_dir, f"{part}.pkl.gz"), "wb") as f:
+                f.write(compressed_part_data)
+
+            for scene in cur_data:
+                num_episodes += len(cur_data[scene])
+
+            consolidated_data.update(cur_data)
+
+        print(f"{output_partition}_consolidated")
+        consolidated_file = os.path.join(
+            ABS_PATH_OF_REARRANGE_TOP_LEVEL_DIR,
+            "data",
+            "2022procthor",
+            f"{output_partition}_consolidated.pkl.gz",
+        )
+        compress_pickle.dump(
+            obj=consolidated_data,
+            path=consolidated_file,
+            pickler_kwargs={"protocol": 4},  # Backwards compatible with python 3.6
+        )
+
+        print(
+            f"{len(consolidated_data)} scenes and total {num_episodes} episodes for {output_partition}"
+        )
+
+    print("Creating mini val houses file")
+    make_valid_houses_file(ctx)
+
+    print("DONE")

@@ -579,6 +579,14 @@ for which we also provide a
 [pre-trained and fine-tuned checkpoint](https://prior-model-weights.s3.us-east-2.amazonaws.com/embodied-ai/rearrangement/one-phase/exp_iThorOnePhaseRGBClipResNet50FineTune_procthor180Msteps_ithor_splits_ithor_fine_tune_64_to_128_rollout_3Msteps_6Msteps__stage_02__steps_000016018675.pt).
 We also provide scripts to generate new ProcTHOR datasets in case you want to try new episodes. 
 
+#### Install original dataset
+
+To download pre-generated training and validation datasets for rearrangement in ProcTHOR, from the project's root
+directory call:   
+```bash
+inv install-procthor-dataset
+```
+
 #### Pre-train model in ProcTHOR (single machine)
 The following will take for about 10-14 days on an 8-GPU machine with 56 CPU cores:
 ```bash
