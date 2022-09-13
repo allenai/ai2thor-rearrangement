@@ -170,8 +170,8 @@ a local `./src` directory. By explicitly specifying the `PIP_SRC` variable we ca
 
 ### Install original episodes datasets
 
-To download pre-generated training, validation and test datasets for rearrangement in iTHOR, from the project's root
-directory call:   
+We need to download pre-generated training, validation and test datasets for rearrangement in iTHOR. From the project's
+root directory, call:
 ```bash
 inv install-ithor-dataset -d 2022
 ```
@@ -592,7 +592,7 @@ We also provide scripts to generate new ProcTHOR datasets in case you want to tr
 #### Install original dataset
 
 To download pre-generated training and validation datasets for rearrangement in ProcTHOR, from the project's root
-directory call:   
+directory, call:   
 ```bash
 inv install-procthor-dataset
 ```

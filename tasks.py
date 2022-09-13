@@ -356,7 +356,9 @@ def make_procthor_mini_val(
 
 
 @task
-def make_valid_houses_file(ctx, num_valid_houses=1_000, prefix="mini_val"):
+def make_valid_houses_file(
+    ctx, num_valid_houses=1_000, prefix="mini_val", verbose=True
+):
     used_houses = [None] * num_valid_houses  # Assume
     from utils.procthor_utils import Houses
 
@@ -369,7 +371,8 @@ def make_valid_houses_file(ctx, num_valid_houses=1_000, prefix="mini_val"):
     )
     num_used = 0
     for scene in episodes:
-        print(scene)
+        if verbose:
+            print(scene)
         pos = int(scene.split("_")[-1])
         used_houses[pos] = houses._data[houses._mode][pos]
         num_used += 1
@@ -379,7 +382,8 @@ def make_valid_houses_file(ctx, num_valid_houses=1_000, prefix="mini_val"):
 
     compress_pickle.dump(used_houses, ofilename)
 
-    print("DONE")
+    if verbose:
+        print("DONE")
 
 
 @task
@@ -721,7 +725,7 @@ def install_procthor_dataset(ctx, revision="2022procthor"):
         )
 
     print("Creating mini val houses file")
-    make_valid_houses_file(ctx)
+    make_valid_houses_file(ctx, verbose=False)
 
     print("DONE")
 
