@@ -664,11 +664,11 @@ def make_procthor_mini_train(
 
 
 @task
-def install_procthor_dataset(ctx):
+def install_procthor_dataset(ctx, revision="2022procthor"):
     import prior
     from rearrange_constants import ABS_PATH_OF_REARRANGE_TOP_LEVEL_DIR
 
-    all_data = prior.load_dataset("procthor_rearrangement_2022")
+    all_data = prior.load_dataset("rearrangement_episodes", revision=revision)
 
     for partition in ["val", "train"]:
         output_partition = f"mini_{partition}" if partition in ["val"] else partition
