@@ -14,10 +14,10 @@ from allenact.algorithms.onpolicy_sync.runner import OnPolicyRunner
 
 from rearrange.utils import save_frames_to_mp4
 
-from baseline_configs.one_phase.procthor.procthor.one_phase import (
+from baseline_configs.one_phase.procthor.one_phase_rgb_clip_dagger import (
     ProcThorOnePhaseRGBClipResNet50DaggerTrainMultiNodeConfig as TrainConfig,
 )
-from baseline_configs.one_phase.procthor.procthor.one_phase import (
+from baseline_configs.one_phase.procthor.eval.eval_minivalid_procthor import (
     EvalConfig as ValidConfig,
 )
 from utils.table_visualizer import TableVisualizer

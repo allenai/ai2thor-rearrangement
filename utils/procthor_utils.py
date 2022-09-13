@@ -1,51 +1,37 @@
-import pickle
-
 import compress_pickle
-import datasets
+import prior
+
+from allenact.utils.system import get_logger
 
 
 class Houses:
     def __init__(
-        self, revision="ithor-splits", valid_houses_file=None,
+        self, revision="rearrangement-2022", valid_houses_file=None,
     ):
         if valid_houses_file is None:
-            self._data = datasets.load_dataset(
-                "allenai/houses", use_auth_token=True, revision=revision,
-            )
+            self._data = prior.load_dataset("procthor-10k", revision=revision)
             self._mode = "train"
         else:
-            self._data = {"validation": compress_pickle.load(valid_houses_file)}
-            self._mode = "validation"
+            get_logger().info(f"Using valid_houses_file {valid_houses_file}")
+            self._data = {"val": compress_pickle.load(valid_houses_file)}
+            self._mode = "val"
 
     def mode(self, mode: str):
-        if mode in ["val", "valid"]:
-            mode = "validation"
-        assert (
-            mode in self._data
-        ), f"missing {mode} (available {list(self._data.keys())})"
+        if mode in ["val", "valid", "validation"]:
+            mode = "val"
+        assert mode in [
+            "train",
+            "val",
+            "test",
+        ], f"missing {mode} (available 'train', 'val', 'test')"
         self._mode = mode
 
     @property
     def current_mode(self):
         return self._mode
 
-    def data(self, pos: int):
-        return self[pos]
-
     def __getitem__(self, pos: int):
-        return pickle.loads(self._data[self._mode][pos]["house"])
-
-    def meta(self, pos: int, include_binary_house=False):
-        res = {**self._data[self._mode][pos]}
-        if not include_binary_house:
-            res.pop("house")
-        return res
+        return self._data[self._mode][pos]
 
     def __len__(self):
         return len(self._data[self._mode])
-
-    def __iter__(self):
-        for it, entry in enumerate(self._data[self._mode]):
-            m = {**entry, "house_idx": it, "house_id": f"{self._mode}_{it}"}
-            h = m.pop("house")
-            yield (pickle.loads(h), m)

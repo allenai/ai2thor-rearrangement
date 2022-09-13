@@ -668,7 +668,7 @@ def make_procthor_mini_train(
 
 
 @task
-def install_procthor_dataset(ctx, revision="2022procthor"):
+def install_procthor_dataset(ctx, revision="2022procthor", skip_consolidate=True):
     import prior
     from rearrange_constants import ABS_PATH_OF_REARRANGE_TOP_LEVEL_DIR
 
@@ -694,35 +694,37 @@ def install_procthor_dataset(ctx, revision="2022procthor"):
         for part, compressed_part_data in all_data[partition]:
             print(f"{part}")
 
-            # each part is a compressed_pickle
-            cur_data = compress_pickle.loads(
-                data=compressed_part_data, compression="gzip"
-            )
+            if not skip_consolidate:
+                # each part is a compressed_pickle
+                cur_data = compress_pickle.loads(
+                    data=compressed_part_data, compression="gzip"
+                )
+
+                for scene in cur_data:
+                    num_episodes += len(cur_data[scene])
+
+                consolidated_data.update(cur_data)
 
             with open(os.path.join(current_dir, f"{part}.pkl.gz"), "wb") as f:
                 f.write(compressed_part_data)
 
-            for scene in cur_data:
-                num_episodes += len(cur_data[scene])
+        if not skip_consolidate:
+            print(f"{output_partition}_consolidated")
+            consolidated_file = os.path.join(
+                ABS_PATH_OF_REARRANGE_TOP_LEVEL_DIR,
+                "data",
+                "2022procthor",
+                f"{output_partition}_consolidated.pkl.gz",
+            )
+            compress_pickle.dump(
+                obj=consolidated_data,
+                path=consolidated_file,
+                pickler_kwargs={"protocol": 4},  # Backwards compatible with python 3.6
+            )
 
-            consolidated_data.update(cur_data)
-
-        print(f"{output_partition}_consolidated")
-        consolidated_file = os.path.join(
-            ABS_PATH_OF_REARRANGE_TOP_LEVEL_DIR,
-            "data",
-            "2022procthor",
-            f"{output_partition}_consolidated.pkl.gz",
-        )
-        compress_pickle.dump(
-            obj=consolidated_data,
-            path=consolidated_file,
-            pickler_kwargs={"protocol": 4},  # Backwards compatible with python 3.6
-        )
-
-        print(
-            f"{len(consolidated_data)} scenes and total {num_episodes} episodes for {output_partition}"
-        )
+            print(
+                f"{len(consolidated_data)} scenes and total {num_episodes} episodes for {output_partition}"
+            )
 
     print("Creating mini val houses file")
     make_valid_houses_file(ctx, verbose=False)

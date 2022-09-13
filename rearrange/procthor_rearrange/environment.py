@@ -68,7 +68,7 @@ class RearrangeProcTHOREnvironment(RearrangeTHOREnvironment):
         controller_kwargs: Optional[Dict[str, Any]] = None,
         enhanced_physics_determinism: bool = True,
         thor_commit_id: str = PROCTHOR_COMMIT_ID,
-        houses_revision: str = "ithor-splits",
+        houses_revision: str = "rearrangement-2022",
         valid_houses_file=None,
     ):
         self._houses = Houses(
@@ -399,6 +399,7 @@ class RearrangeProcTHOREnvironment(RearrangeTHOREnvironment):
 
     def fix_object_names(self, house):
         known_assets = defaultdict(int)
+        print(list(house.keys()))
         to_traverse = house["objects"][:]
         while len(to_traverse):
             cur_obj = to_traverse.pop()
