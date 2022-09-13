@@ -724,3 +724,25 @@ def install_procthor_dataset(ctx, revision="2022procthor"):
     make_valid_houses_file(ctx)
 
     print("DONE")
+
+
+@task
+def install_ithor_dataset(ctx, data_subdir="2022", revision=None):
+    import prior
+    from rearrange_constants import ABS_PATH_OF_REARRANGE_TOP_LEVEL_DIR
+
+    if revision is None:
+        revision = f"{data_subdir}ithor"
+
+    all_data = prior.load_dataset("rearrangement_episodes", revision=revision)
+
+    current_dir = os.path.join(
+        ABS_PATH_OF_REARRANGE_TOP_LEVEL_DIR, "data", data_subdir,
+    )
+    os.makedirs(current_dir, exist_ok=True)
+
+    for part, compressed_part_data in all_data["test"]:
+        with open(os.path.join(current_dir, f"{part}.pkl.gz"), "wb") as f:
+            f.write(compressed_part_data)
+
+    print("DONE")

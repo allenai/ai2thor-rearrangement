@@ -168,7 +168,17 @@ a local `./src` directory. By explicitly specifying the `PIP_SRC` variable we ca
 </p>
 </details>
 
+### Install original episodes datasets
 
+To download pre-generated training, validation and test datasets for rearrangement in iTHOR, from the project's root
+directory call:   
+```bash
+inv install-ithor-dataset -d 2022
+```
+You can also download the 2021 datasets with:
+```bash
+inv install-ithor-dataset -d 2021
+```
 
 **Python 3.6+ 🐍.** Each of the actions supports `typing` within <span class="chillMono">Python</span>.
 
