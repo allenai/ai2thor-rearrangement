@@ -1,3 +1,5 @@
+from copy import deepcopy
+
 import compress_pickle
 import prior
 
@@ -31,7 +33,7 @@ class Houses:
         return self._mode
 
     def __getitem__(self, pos: int):
-        return self._data[self._mode][pos]
+        return deepcopy(self._data[self._mode][pos])
 
     def __len__(self):
         return len(self._data[self._mode])
