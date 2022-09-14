@@ -399,7 +399,6 @@ class RearrangeProcTHOREnvironment(RearrangeTHOREnvironment):
 
     def fix_object_names(self, house):
         known_assets = defaultdict(int)
-        print(list(house.keys()))
         to_traverse = house["objects"][:]
         while len(to_traverse):
             cur_obj = to_traverse.pop()
