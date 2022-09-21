@@ -668,7 +668,7 @@ def make_procthor_mini_train(
 
 
 @task
-def install_procthor_dataset(ctx, revision="2022procthor", skip_consolidate=True):
+def install_procthor_dataset(ctx, revision="2022procthor", skip_consolidate=False):
     import prior
     from rearrange_constants import ABS_PATH_OF_REARRANGE_TOP_LEVEL_DIR
 

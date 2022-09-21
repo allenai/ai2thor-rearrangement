@@ -591,8 +591,8 @@ We also provide scripts to generate new ProcTHOR datasets in case you want to tr
 
 #### Install original dataset
 
-To download pre-generated training and validation datasets for rearrangement in ProcTHOR, from the project's root
-directory, call:   
+To download pre-generated training and validation datasets for rearrangement in ProcTHOR, **from the project's root
+directory**, call:   
 ```bash
 inv install-procthor-dataset
 ```
