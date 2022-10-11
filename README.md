@@ -78,6 +78,7 @@ with open("README.md", "r") as f:
 </li>
 <li><a href="#-training-baseline-models-with-allenact">🏋 Training Baseline Models with AllenAct</a><ul>
 <li><a href="#-pretrained-models">💪 Pretrained Models</a></li>
+<li><a href="#-procthor-pre-training">🏘 ProcTHOR pre-training</a></li>
 </ul>
 </li>
 </ul>
@@ -167,13 +168,23 @@ a local `./src` directory. By explicitly specifying the `PIP_SRC` variable we ca
 </p>
 </details>
 
+### Install original episodes datasets
 
+We need to download pre-generated training, validation and test datasets for rearrangement in iTHOR. From the project's
+root directory, call:
+```bash
+inv install-ithor-dataset -d 2022
+```
+You can also download the 2021 datasets with:
+```bash
+inv install-ithor-dataset -d 2021
+```
 
 **Python 3.6+ 🐍.** Each of the actions supports `typing` within <span class="chillMono">Python</span>.
 
 **AI2-THOR 4.2.0 🧞.** To ensure reproducible results, we're restricting all users to use the exact same version of <span class="chillMono">AI2-THOR</span>.
 
-**AllenAct 🏋💪.** We ues the <span class="chillMono">AllenAct</span> reinforcement learning framework 
+**AllenAct 🏋💪.** We use the <span class="chillMono">AllenAct</span> reinforcement learning framework 
     for generating baseline models, baseline training pipelines, and for several of their helpful abstractions/utilities.
 
 ## 📝 Rearrangement Task Description
@@ -532,18 +543,22 @@ A similar model can be trained for the 2-phase challenge by running
 allenact -o rearrange_out -b . baseline_configs/two_phase/two_phase_rgb_resnet_ppowalkthrough_ilunshuffle.py
 ```
 
+For ProcTHOR pre-training, please [check below](#-procthor-pre-training).
+
 ### 💪 Pretrained Models
 
 In the below table we provide a collection of pretrained models from:
 
-1. [Our CVPR'21 paper introducing this challenge](https://arxiv.org/abs/2103.16544), and
-2. [Our CVPR'22 paper which showed that using CLIP visual encodings can dramatically improve model performance acros embodied tasks](https://arxiv.org/abs/2111.09888).
+1. [Our CVPR'21 paper introducing this challenge](https://arxiv.org/abs/2103.16544),
+2. [Our CVPR'22 paper which showed that using CLIP visual encodings can dramatically improve model performance across embodied tasks](https://arxiv.org/abs/2111.09888), and
+3. [ProcTHOR pre-training with fine-tuning](https://arxiv.org/abs/2206.06994).
 
 We have only evaluated a subset of these models on our 2022 dataset.
 
 | Model | % Fixed Strict (2022 dataset, test) | % Fixed Strict (2021 dataset, test) | Pretrained Model |
 |------------|:-----------------------------------:|:-----------------------------------:|:----------:|
-| [1-Phase Embodied CLIP ResNet50 IL](baseline_configs/one_phase/one_phase_rgb_clipresnet50_dagger.py) |              **19.1%**              |              **17.3%**              | [(link)](https://prior-model-weights.s3.us-east-2.amazonaws.com/embodied-ai/rearrangement/one-phase/exp_OnePhaseRGBClipResNet50Dagger_40proc__stage_00__steps_000065083050.pt) |
+| [1-Phase Embodied CLIP ResNet50 IL (ProcTHOR pretraining)](baseline_configs/one_phase/procthor/ithor/ithor_one_phase_rgb_fine_tune.py) |              **24.5%**              |              -              | [(link)](https://prior-model-weights.s3.us-east-2.amazonaws.com/embodied-ai/rearrangement/one-phase/exp_iThorOnePhaseRGBClipResNet50FineTune_procthor180Msteps_ithor_splits_ithor_fine_tune_64_to_128_rollout_3Msteps_6Msteps__stage_02__steps_000016018675.pt) |
+| [1-Phase Embodied CLIP ResNet50 IL](baseline_configs/one_phase/one_phase_rgb_clipresnet50_dagger.py) |              19.1%              |              **17.3%**              | [(link)](https://prior-model-weights.s3.us-east-2.amazonaws.com/embodied-ai/rearrangement/one-phase/exp_OnePhaseRGBClipResNet50Dagger_40proc__stage_00__steps_000065083050.pt) |
 | [1-Phase ResNet18+ANM IL](baseline_configs/one_phase/one_phase_rgb_resnet_frozen_map_dagger.py) |                  -                  |                8.9%                 | [(link)](https://prior-model-weights.s3.us-east-2.amazonaws.com/embodied-ai/rearrangement/one-phase/exp_OnePhaseRGBResNetFrozenMapDagger_40proc__stage_00__steps_000040060240.pt) |
 | [1-Phase ResNet50 IL](baseline_configs/one_phase/one_phase_rgb_resnet50_dagger.py) |              -              |              7.0%              | [(link)](https://prior-model-weights.s3.us-east-2.amazonaws.com/embodied-ai/rearrangement/one-phase/exp_OnePhaseRGBImageNetResNet50Dagger_40proc_aws0__stage_00__steps_000070075580.pt) |
 | [1-Phase ResNet18 IL](baseline_configs/one_phase/one_phase_rgb_resnet_dagger.py) |                  -                  |                6.3%                 | [(link)](https://s3.console.aws.amazon.com/s3/object/prior-model-weights?prefix=embodied-ai/rearrangement/one-phase/exp_OnePhaseRGBResNetDagger_40proc__stage_00__steps_000050058550.pt) |
@@ -566,6 +581,76 @@ this will evaluate this model across all datapoints in the `data/combined.pkl.gz
 which contains data from the `train`, `val`, and `test` sets so that
 evaluation doesn't have to be run on each set separately.
 
+### 🏘 ProcTHOR pre-training
+
+We include commands that can be used to generate a ProcTHOR-pretrained agent and
+then fine-tune it with the 2022 rearrange dataset. Please note that this only covers the 1-phase modality,
+for which we also provide a
+[pre-trained and fine-tuned checkpoint](https://prior-model-weights.s3.us-east-2.amazonaws.com/embodied-ai/rearrangement/one-phase/exp_iThorOnePhaseRGBClipResNet50FineTune_procthor180Msteps_ithor_splits_ithor_fine_tune_64_to_128_rollout_3Msteps_6Msteps__stage_02__steps_000016018675.pt).
+We also provide scripts to generate new ProcTHOR datasets in case you want to try new episodes. 
+
+#### Install original dataset
+
+To download pre-generated training and validation datasets for rearrangement in ProcTHOR, **from the project's root
+directory**, call:   
+```bash
+inv install-procthor-dataset
+```
+
+#### Pre-train model in ProcTHOR (single machine)
+The following will take for about 10-14 days on an 8-GPU machine with 56 CPU cores:
+```bash
+allenact -b baseline_configs/one_phase/procthor one_phase_rgb_clip_dagger \
+ -s 12345 --config_kwargs '{"distributed_nodes":1}' 
+```
+We **strongly** recommend using a larger number of GPUs and computing nodes for this step.
+
+#### ProcTHOR mini-valid
+Run ProcTHOR mini-valid on checkpoints under a `CKPT_DIR` directory:
+```bash
+inv make-valid-houses-file
+allenact -b baseline_configs/one_phase/procthor/eval eval_minivalid_procthor \
+ -s 12345 --eval --approx_ckpt_step_interval 5e6 -c CKPT_DIR
+```
+
+#### Fine-tune model in iTHOR (single machine)
+
+The following will take for about two days on an 8-GPU machine with 56 CPU cores.
+Assuming the chosen checkpoint from ProcTHOR pre-training has path `CKPT_PATH`:
+```bash
+allenact -b baseline_configs/one_phase/procthor/ithor ithor_one_phase_rgb_fine_tune \
+ -s 12345 -c CKPT_PATH --restart_pipeline
+```
+
+#### iTHOR mini validation
+Run iTHOR mini-valid on checkpoints under `CKPT_DIR`:
+```bash
+inv make-ithor-mini-val
+allenact -b baseline_configs/one_phase/procthor/eval eval_minivalid_ithor \
+ -s 12345 --eval --approx_ckpt_step_interval 5e6 -c CKPT_DIR
+```
+
+#### Generate new ProcTHOR training and mini-valid episodes
+Our training and validation datasets are already provided under [data/2022procthor](data/2022procthor), but we also provide our used
+scripts in case any user is interested in trying new episode distributions.
+
+For training, we use a dataset composed of 50,000 episodes sampled from 2,500 houses with one or two rooms.
+The following commands take for several hours on an 8-GPU machine with 56 CPU cores:
+```bash
+python datagen/procthor_datagen/datagen_runner.py
+inv make-procthor-mini-train
+```
+
+To create a ProcTHOR mini-valid dataset, the following commands take for several hours on an 8-GPU machine
+with 56 CPU cores: 
+```bash
+python datagen/procthor_datagen/datagen_runner.py -m val
+inv consolidate-procthor-val
+inv make-procthor-mini-val
+inv make-valid-houses-file
+```
+
+
 # 📄 Citation
 
 If you use this work, please cite [our CVPR'21 paper](https://arxiv.org/abs/2103.16544):
@@ -577,5 +662,16 @@ If you use this work, please cite [our CVPR'21 paper](https://arxiv.org/abs/2103
   booktitle = {IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
   month = {June},
   year = {2021}
+}
+```
+
+The ProcTHOR code and datasets were used for the Rearrangement experiments in
+```bibtex
+@article{Deitke2022ProcTHOR,
+  title={{ProcTHOR: Large-Scale Embodied AI Using Procedural Generation}},
+  author={Matt Deitke and Eli VanderBilt and Alvaro Herrasti and Luca Weihs and Jordi Salvador and Kiana Ehsani and Winson Han and Eric Kolve and Ali Farhadi and Aniruddha Kembhavi and Roozbeh Mottaghi},
+  journal={{ArXiv}},
+  year={2022},
+  volume={abs/2206.06994}
 }
 ```
