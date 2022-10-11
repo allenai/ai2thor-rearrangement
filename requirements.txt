@@ -9,7 +9,7 @@ stringcase
 lru-dict
 networkx
 compress-pickle==2.1.0
-compress-json
+compress-json==1.0.6
 packaging
 datasets
 invoke
