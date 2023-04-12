@@ -188,9 +188,12 @@ class RearrangeTHOREnvironment:
             when initializing the `ai2thor.controller.Controller` (e.g. width/height).
         """
         if ai2thor.__version__ is not None:  # Allows for custom THOR installs
-            if ai2thor.__version__ not in ["0.0.1", None] and version.parse(
-                ai2thor.__version__
-            ) < version.parse(REQUIRED_THOR_VERSION):
+            if (
+                ai2thor.__version__ not in ["0.0.1", None]
+                and (not ai2thor.__version__.startswith("0+"))
+                and version.parse(ai2thor.__version__)
+                < version.parse(REQUIRED_THOR_VERSION)
+            ):
                 raise ImportError(
                     f"To run the rearrangment baseline experiments you must use"
                     f" ai2thor version {REQUIRED_THOR_VERSION} or higher."
@@ -725,11 +728,7 @@ class RearrangeTHOREnvironment:
             action_space=self.action_space,
             action_fn=self.drop_held_object,
             thor_action="DropHandObject",
-            default_thor_kwargs={
-                "autoSimulation": False,
-                "randomMagnitude": 0.0,
-                **self.physics_step_kwargs,
-            },
+            default_thor_kwargs={"autoSimulation": False, **self.physics_step_kwargs,},
         )
 
     def drop_held_object_with_snap(self) -> bool:
@@ -866,7 +865,6 @@ class RearrangeTHOREnvironment:
                     "DropHeldObjectAhead",
                     forceAction=True,
                     autoSimulation=False,
-                    randomMagnitude=0.0,
                     **{**self.physics_step_kwargs, "actionSimulationSeconds": 1.5},
                 )
 

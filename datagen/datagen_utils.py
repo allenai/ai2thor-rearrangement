@@ -10,7 +10,6 @@ from rearrange_constants import OPENNESS_THRESHOLD
 
 def get_scenes(stage: str) -> List[str]:
     """Returns a list of iTHOR scene names for each stage."""
-    assert stage in {"train", "train_unseen", "val", "valid", "test", "all"}
     assert stage in {"debug", "train", "train_unseen", "val", "valid", "test", "all"}
 
     if stage == "debug":

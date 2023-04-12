@@ -1,3 +1,4 @@
+import warnings
 from abc import ABC
 from typing import Optional, Dict, Sequence
 
@@ -23,7 +24,12 @@ from rearrange.tasks import RearrangeTaskSampler
 class OnePhaseRGBBaseExperimentConfig(RearrangeBaseExperimentConfig, ABC):
     @classmethod
     def sensors(cls) -> Sequence[Sensor]:
-        cnn_type, pretraining_type = cls.CNN_PREPROCESSOR_TYPE_AND_PRETRAINING
+
+        if cls.CNN_PREPROCESSOR_TYPE_AND_PRETRAINING is None:
+            warnings.warn("No CNN_PREPROCESSOR_TYPE_AND_PRETRAINING specified. Will use NO vision sensors.")
+            return []
+
+        _, pretraining_type = cls.CNN_PREPROCESSOR_TYPE_AND_PRETRAINING
         if pretraining_type.strip().lower() == "clip":
             from allenact_plugins.clip_plugin.clip_preprocessors import (
                 ClipResNetPreprocessor,

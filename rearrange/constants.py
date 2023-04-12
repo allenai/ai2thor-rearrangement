@@ -6,10 +6,10 @@ FOV = 90
 
 REQUIRED_THOR_VERSION = "5.0.0"
 STARTER_DATA_DIR = os.path.join(
-    os.path.abspath(os.path.dirname(Path(__file__))), "../data", "2022",
+    os.path.abspath(os.path.dirname(Path(__file__))), "../data", "2023",
 )
 
-THOR_COMMIT_ID = "a4450d63b92eed97861792eb7a1c757d1f260f29"
+THOR_COMMIT_ID = "a9ccb07faf771377c9ff1615bfe7e0ad01968663"
 STEP_SIZE = 0.25
 
 # fmt: off

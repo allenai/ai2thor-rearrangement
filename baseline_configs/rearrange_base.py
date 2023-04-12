@@ -239,6 +239,7 @@ class RearrangeBaseExperimentConfig(ExperimentConfig):
         devices: Optional[List[int]] = None,
         seeds: Optional[List[int]] = None,
         deterministic_cudnn: bool = False,
+        force_x_display: Optional[str] = None,
     ):
         if allowed_scenes is not None:
             scenes = allowed_scenes
@@ -283,7 +284,10 @@ class RearrangeBaseExperimentConfig(ExperimentConfig):
         x_display: Optional[str] = None
         gpu_device: Optional[int] = None
         thor_platform: Optional[ai2thor.platform.BaseLinuxPlatform] = None
-        if platform.system() == "Linux":
+
+        if force_x_display is not None:
+            x_display = force_x_display
+        elif platform.system() == "Linux":
             try:
                 x_displays = get_open_x_displays(throw_error_if_empty=True)
 
