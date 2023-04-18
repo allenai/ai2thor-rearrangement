@@ -51,6 +51,7 @@ with open("README.md", "r") as f:
 <div class="toc">
 <ul>
 <li><a href="#-whats-new-in-the-2023-challenge">🔥🆕🔥 What's New in the 2023 Challenge?</a></li>
+<li><a href="#-2022-challenge-winners-and-current-sota">⌛🥇 2022 Challenge Winners and Current SoTA</a></li>
 <li><a href="#-installation">💻 Installation</a></li>
 <li><a href="#-rearrangement-task-description">📝 Rearrangement Task Description</a></li>
 <li><a href="#-challenge-tracks-and-datasets">🛤️ Challenge Tracks and Datasets</a><ul>
@@ -100,6 +101,31 @@ Our 2023 AI2-THOR Rearrangement Challenge has several upgrades distinguishing it
     them.
 4. **Misc. improvements.** We've fixed a number of minor bugs and performance issues from the 2022 challenge improving
    consistency.
+
+## ⌛🥇 2022 Challenge Winners and Current SoTA
+
+The winners of the 2022 AI2-THOR Rearrangement Challenge and current state-of-the-art include:
+
+### 1-Phase Challenge Winner (Current SoTA)
+__Submission name__: ProcTHOR + Fine-Tuning <br>
+__% Fixed Strict (Test)__: 24.47% <br>
+__Paper link__: [ProcTHOR: Large-Scale Embodied AI Using Procedural Generation](https://proceedings.neurips.cc/paper_files/paper/2022/file/27c546ab1e4f1d7d638e6a8dfbad9a07-Paper-Conference.pdf) (@NeurIPS'22)  <br>
+__Team:__ Matt Deitke, Eli VanderBilt, Alvaro Herrasti, Luca Weihs, Jordi Salvador, Kiana Ehsani, Winson Han, Eric Kolve, Ali Farhadi, Aniruddha Kembhavi, and Roozbeh Mottaghi <br>
+
+### 2-Phase Challenge Winner
+__Submission name__: MaSS: 3D Mapping and Semantic Search <br>
+__% Fixed Strict (Test)__: 16.56% <br>
+__Paper link__: [A Simple Approach for Visual Room Rearrangement: 3D Mapping and Semantic Search](https://openreview.net/pdf?id=1C6nCCaRe6p) (@ICLR'23)  <br>
+__Codebase__: https://github.com/brandontrabucco/mass  <br>
+__Team:__ Brandon Trabucco, Gunnar A Sigurdsson, Robinson Piramuthu, Gaurav S. Sukhatme, and Ruslan Salakhutdinov  <br>
+
+### Current 2-Phase SoTA
+__Submission name__: TIDEE + open everything  <br>
+__% Fixed Strict (Test)__: 28.94%  <br>
+__Paper link__: [TIDEE: Tidying Up Novel Rooms using Visuo-Semantic Commonsense Priors](https://arxiv.org/abs/2207.10761) (@EECV'22)  <br>
+__Codebase__: https://github.com/Gabesarch/TIDEE  <br>
+__Team:__ Gabriel Sarch, Zhaoyuan Fang, Adam W. Harley, Paul Schydlo, Michael Tarr, Saurabh Gupta, and Katerina Fragkiadaki  <br>
+
 
 ## 💻 Installation
 

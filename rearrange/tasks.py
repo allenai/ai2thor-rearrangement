@@ -130,6 +130,8 @@ class UnshuffleTask(AbstractRearrangeTask):
                     priority_onames.append(up["name"])
                     openness_1 = gp["openness"]
 
+                # Creates an iterator that toggles between the values a and b indefinitely. The idea
+                # here is that we want to toggle between the two openness values for the object
                 self.openable_obj_name_to_openness_iter[up["name"]] = (lambda a, b: iter(
                     (
                         a if i % 2 == 0 else b
