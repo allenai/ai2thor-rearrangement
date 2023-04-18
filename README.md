@@ -256,9 +256,11 @@ be used for evaluation.
 ## 🛤️ Submitting to the Leaderboard
 
 We are tracking challenge participant entries using the [AI2 Leaderboard](https://leaderboard.allenai.org/). The team
-with the best submission made to either of the below leaderboards by June 7th
+with the best submission made to either of the below leaderboards by June 12th
 (midnight, [anywhere on earth](https://time.is/Anywhere_on_Earth)) will be announced at the 
 [CVPR'21 Embodied-AI Workshop](https://embodied-ai.org/) and invited to produce a video describing their approach.
+Note that a winning submission must be materially different from the baseline models we provide and from
+submissions made to prior years' challenges.
 
 In particular, our 2023 leaderboard links can be found at
 * [**2022 1-phase leaderboard**](https://leaderboard.allenai.org/ithor_rearrangement_1phase_2023) and 
