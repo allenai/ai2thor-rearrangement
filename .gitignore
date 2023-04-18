@@ -5,6 +5,11 @@ data
 *.json
 *.json.gz
 
+# Include data files
+!data/2021/*.pkl.gz
+!data/2022/*.pkl.gz
+!data/2023/*.pkl.gz
+
 *.patch
 rearrange_out
 experiment_output

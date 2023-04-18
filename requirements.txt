@@ -10,3 +10,4 @@ lru-dict
 networkx
 compress-pickle==2.1.0
 packaging
+canonicaljson

@@ -65,6 +65,7 @@ def generate_one_rearrangement_given_initial_conditions(
     if not remove_objects_until_all_have_identical_meshes(controller):
         return None, None, None
 
+    controller.step("MakeAllObjectsUnbreakable")
     controller.step("InitialRandomSpawn", **start_kwargs)
     if not controller.last_event.metadata["lastActionSuccess"]:
         return None, None, None
@@ -342,7 +343,7 @@ def generate_rearrangements_for_scenes(
 
             while True:
                 try_count += 1
-                if try_count > 100:
+                if try_count > 300:
                     raise RuntimeError(
                         f"Something wrong with scene {scene}, please file an issue."
                     )

@@ -1,11 +1,13 @@
 """Include the Task and TaskSampler to train on a single unshuffle instance."""
 import copy
+import itertools
 import os
 import random
 import traceback
 from abc import ABC
 from typing import Any, Tuple, Optional, Dict, Sequence, List, Union, cast, Set
 
+import canonicaljson
 import compress_pickle
 import gym.spaces
 import numpy as np
@@ -14,6 +16,7 @@ import stringcase
 from allenact.base_abstractions.misc import RLStepResult
 from allenact.base_abstractions.sensor import SensorSuite
 from allenact.base_abstractions.task import Task, TaskSampler
+from allenact.utils.misc_utils import md5_hash_str_as_int
 from allenact.utils.system import get_logger
 from allenact_plugins.ithor_plugin.ithor_util import round_to_factor
 from rearrange.constants import STARTER_DATA_DIR, STEP_SIZE
@@ -29,6 +32,7 @@ from rearrange.utils import (
     RearrangeActionSpace,
     include_object_data,
 )
+from rearrange_constants import OPENNESS_THRESHOLD
 
 
 class AbstractRearrangeTask(Task, ABC):
@@ -97,7 +101,52 @@ class UnshuffleTask(AbstractRearrangeTask):
             successfully_placed=dict(soap_bottle=False, pan=False, knife=False),
         )
 
-        _, gps, cps = self.unshuffle_env.poses
+        ups, gps, cps = self.unshuffle_env.poses
+
+        self.unshuffle_task_spec_hash = md5_hash_str_as_int(
+            canonicaljson.encode_canonical_json(
+                self.unshuffle_env.current_task_spec.__dict__
+            ).decode("utf-8")
+        )
+
+        seeded_rand = random.Random(self.unshuffle_task_spec_hash)
+        self.openable_obj_name_to_openness_iter = {}
+        openable_onames = []
+        priority_onames = []
+        for up, gp in zip(ups, gps):
+            if up["openness"] is not None:
+                openable_onames.append(up["name"])
+                openness_0 = up["openness"]
+                if gp["openness"] == up["openness"]:
+                    o = up["openness"]
+                    ot = OPENNESS_THRESHOLD
+                    a, b, c, d = 0, max(o - ot, 0.0), min(o + ot, 1.0), 1.0
+                    openness_1 = (
+                        seeded_rand.uniform(a, b)
+                        if seeded_rand.random() < (b - a) / ((b - a) + (d - c))
+                        else seeded_rand.uniform(c, d)
+                    )
+                else:
+                    priority_onames.append(up["name"])
+                    openness_1 = gp["openness"]
+
+                # Creates an iterator that toggles between the values a and b indefinitely. The idea
+                # here is that we want to toggle between the two openness values for the object
+                self.openable_obj_name_to_openness_iter[up["name"]] = (lambda a, b: iter(
+                    (
+                        a if i % 2 == 0 else b
+                        for i in itertools.count()
+                    )
+                ))(openness_1, openness_0)
+
+        priority_onames.sort()
+        seeded_rand.shuffle(priority_onames)
+        openable_onames = sorted(list(set(openable_onames) - set(priority_onames)))
+        seeded_rand.shuffle(openable_onames)
+        self.openable_obj_name_to_priority = {
+            oname: i for i, oname in enumerate(priority_onames + openable_onames)
+        }
+
         self.start_energies = self.unshuffle_env.pose_difference_energy(
             goal_pose=gps, cur_pose=cps
         )
@@ -352,31 +401,25 @@ class UnshuffleTask(AbstractRearrangeTask):
                 action_name.replace("open_by_type_", "")
             )
             with include_object_data(self.unshuffle_env.controller):
-
-                obj_name_to_goal_and_cur_poses = {
-                    cur_pose["name"]: (goal_pose, cur_pose)
-                    for _, goal_pose, cur_pose in zip(*self.unshuffle_env.poses)
-                }
-
-                goal_pose = None
-                cur_pose = None
-                for o in self.unshuffle_env.last_event.metadata["objects"]:
+                openable_candidates = [
+                    o
+                    for o in self.unshuffle_env.last_event.metadata["objects"]
                     if (
                         o["visible"]
                         and o["objectType"] == object_type
                         and o["openable"]
-                        and not self.unshuffle_env.are_poses_equal(
-                            *obj_name_to_goal_and_cur_poses[o["name"]]
-                        )
-                    ):
-                        goal_pose, cur_pose = obj_name_to_goal_and_cur_poses[o["name"]]
-                        break
+                    )
+                ]
+                openable_candidates.sort(
+                    key=lambda o: self.openable_obj_name_to_priority[o["name"]]
+                )
 
-                if goal_pose is not None:
-                    object_id = cur_pose["objectId"]
-                    goal_openness = goal_pose["openness"]
+                if len(openable_candidates) > 0:
+                    o = openable_candidates[0]
+                    object_id = o["objectId"]
+                    target_openness = next(self.openable_obj_name_to_openness_iter[o["name"]])
 
-                    if cur_pose["openness"] > 0.0:
+                    if o["openness"] > 0.0:
                         self.unshuffle_env.controller.step(
                             "CloseObject",
                             objectId=object_id,
@@ -386,7 +429,7 @@ class UnshuffleTask(AbstractRearrangeTask):
                     self.unshuffle_env.controller.step(
                         "OpenObject",
                         objectId=object_id,
-                        openness=goal_openness,
+                        openness=target_openness,
                         **self.unshuffle_env.physics_step_kwargs,
                     )
                     action_success = self.unshuffle_env.last_event.metadata[
