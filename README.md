@@ -172,11 +172,15 @@ Here's a quick summary of the most important files/directories in this repositor
 </p>
 </details>
 
-You can then install requirements by running
+You can now either install the requirements into a local python environment or use the provided Dockerfile.
+
+### Local installation
+
+First create a python virtual environment and then install requirements by running
 ```bash
 pip install -r requirements.txt
 ```
-or, if you prefer using conda, we can create a `thor-rearrange` environment with our requirements by running
+Or, if you prefer using conda, you can create a `thor-rearrange` environment with our requirements by running
 ```bash
 export MY_ENV_NAME=thor-rearrange
 export CONDA_BASE="$(dirname $(dirname "${CONDA_EXE}"))"
@@ -195,7 +199,97 @@ a local `./src` directory. By explicitly specifying the `PIP_SRC` variable we ca
 </p>
 </details>
 
+### Docker installation
 
+This assumes some familiarity with Docker. If you are new to Docker, we recommend reading through
+[this tutorial](https://docs.docker.com/get-started/).
+
+You first need to make sure you have `nvidia-docker` installed on your machine. If you don't, you can install it (assuming
+you are running on Ubuntu) by running:
+```bash
+# Installing nvidia-container-toolkit
+curl -s -L https://nvidia.github.io/nvidia-container-runtime/gpgkey | \
+  sudo apt-key add -
+distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
+curl -s -L https://nvidia.github.io/nvidia-container-runtime/$distribution/nvidia-container-runtime.list | \
+  sudo tee /etc/apt/sources.list.d/nvidia-container-runtime.list
+sudo apt-get update
+sudo apt-get install -y nvidia-container-toolkit-base nvidia-container-toolkit
+sudo systemctl restart docker
+```
+
+Now `cd` into the `ai2thor-rearrangement` repository and then build the docker image by running
+```bash 
+DOCKER_BUILDKIT=1 docker build -t rearrangement:latest .
+```
+to create a docker image with name `rearrangement`. Note that the [Dockerfile](./Dockerfile) will automatically
+copy the contents of the `ai2thor-rearrangement` repository into the docker image. You can, of course, modify
+the Dockerfile to copy in additional files/directories as needed or mount the `ai2thor-rearrangement` repository
+directory on the docker container (see the [Docker documentation](https://docs.docker.com/storage/bind-mounts/) for
+more information) so that any changes you make to your local copy of the repository are reflected in the docker
+container (and vice versa).
+
+Now to start the docker container, you can run:
+```bash
+docker run \
+    --gpus all \
+    --device /dev/dri \
+    --mount type=bind,source=/usr/share/vulkan/icd.d/nvidia_icd.json,target=/etc/vulkan/icd.d/nvidia_icd.json \
+    --mount type=bind,source=/usr/share/vulkan/icd.d/nvidia_layers.json,target=/etc/vulkan/implicit_layer.d/nvidia_layers.json \
+    --mount type=bind,source=/usr/share/glvnd/egl_vendor.d/10_nvidia.json,target=/usr/share/glvnd/egl_vendor.d/10_nvidia.json \
+    --shm-size 50G \
+    -it rearrangement:latest
+```
+Please set the shared memory size (`--shm-size`) to something that your machine can support. Setting this too small can cause
+problems in multi-GPU training. Note that, importantly, we are mounting the `nvidia_icd.json`, `nvidia_layers.json`, and `10_nvidia.json` files
+from the host machine into the docker container. This is necessary to ensure that the docker container can use
+the Vulkan API (which is used by AI2-THOR). The above assumes that your machine has a working Vulkan installation
+(modern versions of Ubuntu come with this pre-installed) and that the above files are present at the
+```bash
+/usr/share/vulkan/icd.d/nvidia_icd.json
+/usr/share/vulkan/icd.d/nvidia_layers.json
+/usr/share/glvnd/egl_vendor.d/10_nvidia.json
+```
+paths. On some machines these files may be located at different paths. If you are
+running into issues with the above, you can try checking to  see if the above files exist instead at the paths:
+```bash
+/etc/vulkan/icd.d/nvidia_icd.json,target
+/etc/vulkan/implicit_layer.d/nvidia_layers.json
+/usr/share/glvnd/egl_vendor.d/10_nvidia.json
+```
+or use the `find` command to search for these files: 
+```bash
+find / -name nvidia_icd.json
+find / -name nvidia_layers.json
+find / -name 10_nvidia.json
+```
+Once you find the correct paths, you'll need to then modify the above `docker run` command accordingly.
+
+Now that you've successfully run the docker container, you can run the following to test that everything is working:
+```bash
+conda activate rearrange
+export PYTHONPATH=$PYTHONPATH:$PWD
+allenact -o rearrange_out -b . baseline_configs/one_phase/one_phase_rgb_resnet_dagger.py
+```
+You should see output that looks like the following
+```bash
+[05/23 15:47:34 INFO:] Running with args Namespace(experiment='baseline_configs/one_phase/one_phase_rgb_resnet_dagger.py', eval=False, config_kwargs=None, extra_tag='', output_dir='rearrange_out', save_dir_fmt=<SaveDirFormat.FLAT: 'FLAT'>, seed=None, experiment_base='.', checkpoint=None, infer_output_dir=False, approx_ckpt_step_interval=None, restart_pipeline=False, deterministic_cudnn=False, max_sampler_processes_per_worker=None, deterministic_agents=False, log_level='info', disable_tensorboard=False, disable_config_saving=False, collect_valid_results=False, valid_on_initial_weights=False, test_expert=False, distributed_ip_and_port='127.0.0.1:0', machine_id=0, callbacks='', enable_crash_recovery=False, test_date=None, approx_ckpt_steps_count=None, skip_checkpoints=0)	[main.py: 452]
+[05/23 15:47:35 INFO:] Config files saved to rearrange_out/used_configs/OnePhaseRGBResNetDagger_40proc/2023-05-23_15-47-35	[runner.py: 865]
+[05/23 15:47:35 INFO:] Using 8 train workers on devices (device(type='cuda', index=0), device(type='cuda', index=1), device(type='cuda', index=2), device(type='cuda', index=3), device(type='cuda', index=4), device(type='cuda', index=5), device(type='cuda', index=6), device(type='cuda', index=7))	[runner.py: 274]
+[05/23 15:47:35 INFO:] Engines on machine_id == 0 using port 53495 and seed 137964697	[runner.py: 444]
+[05/23 15:47:35 INFO:] Using local worker ids [0, 1, 2, 3, 4, 5, 6, 7] (total 8 workers in machine 0)	[runner.py: 283]
+[05/23 15:47:36 INFO:] Started 8 train processes	[runner.py: 545]
+[05/23 15:47:36 INFO:] Using 1 valid workers on devices (device(type='cuda', index=7),)	[runner.py: 274]
+[05/23 15:47:36 INFO:] Started 1 valid processes	[runner.py: 572]
+[05/23 15:47:39 INFO:] train 1 args {'experiment_name': 'OnePhaseRGBResNetDagger_40proc', 'config': <baseline_configs.one_phase.one_phase_rgb_resnet_dagger.OnePhaseRGBResNetDaggerExperimentConfig object at 0x7efd483fac70>, 'callback_sensors': [], 'results_queue': <multiprocessing.queues.Queue object at 0x7efd483facd0>, 'checkpoints_queue': <multiprocessing.queues.Queue object at 0x7efd268d5be0>, 'checkpoints_dir': 'rearrange_out/checkpoints/OnePhaseRGBResNetDagger_40proc/2023-05-23_15-47-35', 'seed': 137964697, 'deterministic_cudnn': False, 'mp_ctx': <multiprocessing.context.ForkServerContext object at 0x7efd268dd430>, 'num_workers': 8, 'device': device(type='cuda', index=1), 'distributed_ip': '127.0.0.1', 'distributed_port': 53495, 'max_sampler_processes_per_worker': None, 'save_ckpt_after_every_pipeline_stage': True, 'initial_model_state_dict': '[SUPPRESSED]', 'first_local_worker_id': 0, 'distributed_preemption_threshold': 0.7, 'try_restart_after_task_error': False, 'mode': 'train', 'worker_id': 1[runner.py: 373]
+(...)
+[05/23 15:53:14 INFO:] TRAIN: 22295 rollout steps ({'onpolicy': 22295}) total_loss 3.17 global_batch_size 2.48e+03 lr 0.0003 rollout_epochs 3 rollout_num_mini_batch 1 worker_batch_size 312 unshuffle/change_energy 2.49 unshuffle/end_energy 0.153 unshuffle/energy_prop 0.058 unshuffle/ep_length 34.8 unshuffle/num_broken 0 unshuffle/num_changed 2.88 unshuffle/num_fixed 2.78 unshuffle/num_initially_misplaced 2.94 unshuffle/num_misplaced 0.166 unshuffle/num_newly_misplaced 0 unshuffle/prop_fixed 0.944 unshuffle/prop_fixed_strict 0.944 unshuffle/prop_misplaced 0.0557 unshuffle/reward 2.26 unshuffle/start_energy 2.56 unshuffle/success 0.861 teacher_ratio/enforced 1 teacher_ratio/sampled 1 imitation_loss/expert_cross_entropy 3.17 elapsed_time 338s	[runner.py: 1089]
+[05/23 15:56:07 INFO:] TRAIN: 44475 rollout steps ({'onpolicy': 44475}) total_loss 2.48 global_batch_size 2.47e+03 lr 0.0003 rollout_epochs 3 rollout_num_mini_batch 1 worker_batch_size 311 unshuffle/change_energy 2.48 unshuffle/end_energy 0.183 unshuffle/energy_prop 0.0617 unshuffle/ep_length 44.8 unshuffle/num_broken 0 unshuffle/num_changed 2.88 unshuffle/num_fixed 2.79 unshuffle/num_initially_misplaced 2.99 unshuffle/num_misplaced 0.197 unshuffle/num_newly_misplaced 0 unshuffle/prop_fixed 0.94 unshuffle/prop_fixed_strict 0.94 unshuffle/prop_misplaced 0.0605 unshuffle/reward 2.3 unshuffle/start_energy 2.6 unshuffle/success 0.865 teacher_ratio/enforced 1 teacher_ratio/sampled 1 imitation_loss/expert_cross_entropy 2.48 elapsed_time 173s approx_fps 128 onpolicy/approx_eps 128	[runner.py: 1089]
+```
+Note that it may take several minute before the lines with `TRAIN:` start appearing, this is because these only
+print after many thousands of steps have been taken. This can be annoying when debugging, if you'd like to print these
+logs more frequently you should change the [`metric_accumulate_interval` argument](https://github.com/allenai/ai2thor-rearrangement/blob/main/baseline_configs/rearrange_base.py#L474)
+to the `TrainingPipeline` in the `baseline_configs/rearrange_base.py` file to be some small integer value (e.g. `metric_accumulate_interval=1`)
 
 **Python 3.6+ 🐍.** Each of the actions supports `typing` within <span class="chillMono">Python</span>.
 
@@ -605,6 +699,7 @@ allenact baseline_configs/one_phase/one_phase_rgb_resnet_dagger.py \
 this will evaluate this model across all datapoints in the `data/combined.pkl.gz` dataset
 which contains data from the `train`, `val`, and `test` sets so that
 evaluation doesn't have to be run on each set separately.
+
 
 # 📄 Citation
 
