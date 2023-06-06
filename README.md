@@ -357,8 +357,8 @@ Note that a winning submission must be materially different from the baseline mo
 submissions made to prior years' challenges.
 
 In particular, our 2023 leaderboard links can be found at
-* [**2022 1-phase leaderboard**](https://leaderboard.allenai.org/ithor_rearrangement_1phase_2023) and 
-* [**2022 2-phase leaderboard**](https://leaderboard.allenai.org/ithor_rearrangement_2phase_2023).
+* [**2023 1-phase leaderboard**](https://leaderboard.allenai.org/ithor_rearrangement_1phase_2023) and 
+* [**2023 2-phase leaderboard**](https://leaderboard.allenai.org/ithor_rearrangement_2phase_2023).
 
 Our older (2021/2022) leaderboards are also available indefinitely
 ([2021 1-phase](https://leaderboard.allenai.org/ithor_rearrangement_1phase), 
