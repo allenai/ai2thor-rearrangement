@@ -11,6 +11,8 @@ RUN conda create -n rearrange -y python=3.9
 ENV PYTHON=/opt/miniconda3/envs/rearrange/bin/python
 ENV PIP=/opt/miniconda3/envs/rearrange/bin/pip
 
+RUN $PIP install --upgrade setuptools==65.5.0
+
 RUN $PIP install torch==1.10.1+cu111 torchvision==0.11.2+cu111 -f https://download.pytorch.org/whl/cu111/torch_stable.html;
 
 RUN /opt/miniconda3/bin/conda install -n rearrange -y -c conda-forge jsonnet ipython
