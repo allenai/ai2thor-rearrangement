@@ -53,7 +53,7 @@ def il_training_params(label: str, training_steps: int):
 
     elif label == "40proc":
         lr = 3e-4
-        num_train_processes = 40
+        num_train_processes = 1
         num_steps = 64
         dagger_steps = min(int(1e6), training_steps // 10)
         bc_tf1_steps = min(int(1e5), training_steps // 10)

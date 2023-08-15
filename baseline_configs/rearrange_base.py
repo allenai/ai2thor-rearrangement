@@ -471,10 +471,7 @@ class RearrangeBaseExperimentConfig(ExperimentConfig):
             max_grad_norm=info.get("max_grad_norm", 0.5),
             save_interval=cls.SAVE_INTERVAL,
             named_losses=info["named_losses"],
-            metric_accumulate_interval=cls.num_train_processes()
-            * max(*cls.MAX_STEPS.values())
-            if torch.cuda.is_available()
-            else 1,
+            metric_accumulate_interval=1,
             optimizer_builder=Builder(optim.Adam, dict(lr=info["lr"])),
             advance_scene_rollout_period=None,
             pipeline_stages=info["pipeline_stages"],
